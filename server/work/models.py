@@ -3,7 +3,7 @@ from django.db import models
 # Create your models here.
 
 class Task(models.Model):
-    bucket = models.CharField(max_length=12, db_index=True)
+    bucket = models.CharField(max_length=12, db_index=True, unique=True)
     status = models.CharField(  max_length=4, 
                                 db_index=True,
                                 choices = (
