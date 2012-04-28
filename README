@@ -9,7 +9,7 @@ Small and simple django app.
 How does it work?
 ------
 1: Setup the django application, an howto is provided in 'server/start.txt
-2: Setup the worker in ~/worker.sh  
+2: Setup the worker in ./worker/. The start app is: "job_sechduler.sh"
 3: Worker needs to do a get at http://django/get/ it will get a text file with a 0.0.0.0/24 subnet and ip's in octets.
 4: Worker starts scanning and when it's done it will post back an ip from the iprange received to: http://django/done/8.8.8.8
 5: Worker goes back to point 3
