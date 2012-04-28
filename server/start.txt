@@ -1,0 +1,10 @@
+For starting Django app:
+
+1: Edit settings.py and config a mysql database.
+2: python manage.py syncdb
+3: python manage.py initwork
+4: python manage.py runserver
+5: ...
+6: PROFIT
+
+
