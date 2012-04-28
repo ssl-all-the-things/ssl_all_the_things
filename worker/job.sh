@@ -6,7 +6,9 @@ CONROL_PORT="80"
 CONNECT_BASE="http://${CONTROL_IP}:80"
 
 function get_ipblock(){
-    MY_GET=`curl "${CONNECT_BASE}/get"`
+    curl "${CONNECT_BASE}/get" | while read line ; do
+        echo "worker.sh $line"
+    done
 }
 
 function done_ipblock(){
@@ -15,6 +17,10 @@ function done_ipblock(){
 
 
 while [ 1 ]; do
-    
+    # Fetch new work
+    curl "${CONNECT_BASE}/get" | while read line ; do
+        echo "worker.sh $line"
+        sleep 1
+    done
 
 done
