@@ -19,5 +19,6 @@ urlpatterns = patterns('',
 
 
     url(r'^get/(?P<id>[a-zA-Z0-9]*)/$', 'server.work.views.get_work'),
+    url(r'^done/(?P<id>[a-zA-Z0-9]*)/$', 'server.work.views.done'),
 
 )
