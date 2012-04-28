@@ -1,11 +1,29 @@
 Trying to download all the SSL certificate chains in the 2^32 space.
 
-First attempt to scan port 443 (HTTPS) exclusively.
+This project has a:
+# Client
+Scans only port 443 at the moment.
+# Server
+Small and simple django app.
 
+How does it work?
+------
+1: Setup the django application, an howto is provided in 'server/start.txt
+2: Setup the worker in ~/worker.sh  
+3: Worker needs to do a get at http://django/get/ it will get a text file with a 0.0.0.0/24 subnet and ip's in octets.
+4: Worker starts scanning and when it's done it will post back an ip from the iprange received to: http://django/done/8.8.8.8
+5: Worker goes back to point 3
+6: When no data has been received for more then 30 minuts from a certain job id, it will release the job again to a worker
+7: ...
+8: ALL YOUR CERTIFICATES BELONG TO US and ready to be datacrunched and plotted.
 
 Todo
 ---
--
 Add a timeout
-Make a file based database out of the 
+Make a file based database out of the certificates.
+Datacrunch the certificates.
 Testing with Nikhef's HTTPS at 192.16.199.166
+
+Get work from Django App
+Post back that work is done and get a new job
+
