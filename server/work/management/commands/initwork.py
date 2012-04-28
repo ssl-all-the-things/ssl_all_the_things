@@ -9,6 +9,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         for block in combinations_with_replacement(range(256), 3):
-            block_str = "%d.%d.%d" % (block[0], block[1], block[2])
+            block_str = "%d %d %d" % (block[0], block[1], block[2])
             t = Task(bucket = block_str)
             t.save()
