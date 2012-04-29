@@ -27,17 +27,18 @@ while [ 1 ]; do
         continue
     fi
 
+    MEH=`head -n 1 ${WORK_FILE}`
+
     cat ${WORK_FILE} | while read line ; do
         echo "Trying: ./worker.sh $line"
         ./worker.sh $line
     done
-
-    MEH=`tail -1 ${WORK_FILE}`
     rm ${WORK_FILE}
 
     UPLOAD=0
     while [ "$UPLOAD" = "0" ]; do
-        echo "Trying POST: $line"
+        echo "Trying POST: $MEH"
+        echo 'curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"'
         curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
         if [ "$?" = "0" ]; then
             break
