@@ -26,10 +26,15 @@ while [ 1 ]; do
     done
 
     MEH=`tail -1 ${WORK_FILE}`
-    echo $MEH
     rm ${WORK_FILE}
 
-    curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+    UPLOAD=0
+    while [ "$UPLOAD" = "0" ]; do
+        curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+        if [ "$?" = "0" ]; then
+            break
+        fi
+    done
 done
 
 exit 0
