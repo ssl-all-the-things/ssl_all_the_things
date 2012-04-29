@@ -22,7 +22,8 @@ def done(request, id):
         if not request.POST.has_key("ipblock"):
             return HttpResponse("ERROR: Expecting an ip to be posted to ipblock.")
         ip = " ".join(request.POST["ipblock"].split()[0:3])
-        task = Task.objects.filter(bucket=ip).all()
+        print "ipblock=\"%s\"" % (ip, )
+        task = Task.objects.filter(bucket=ip).all()[0]
         if not task:
             return HttpResponse("ERROR: No such ipblock")
         if task.worker_id != id:
