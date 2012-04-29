@@ -6,6 +6,12 @@ CONTROL_PORT="8000"
 CONNECT_BASE="http://${CONTROL_IP}:${CONTROL_PORT}"
 
 
+function done_ipblock(){
+    curl "${CONNECT_BASE}/done"
+}
+
+MEH=
+
 WORKER_ID=$(echo "`hostname`$$" | md5sum | cut -f1 -d" ")
 echo "Worker ID: $WORKER_ID"
 
@@ -18,13 +24,15 @@ while [ 1 ]; do
     cat ${WORK_FILE} | while read line ; do
         ./worker.sh $line
     done
+
+    MEH=`tail -1 ${WORK_FILE}`
+    echo $MEH
     rm ${WORK_FILE}
 
-    curl --data "'$line'"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+    curl -vv --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
     sleep 2
 
 done
 
 exit 0
-
 
