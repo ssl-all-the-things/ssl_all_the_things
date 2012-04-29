@@ -13,6 +13,7 @@ class Command(BaseCommand):
             if block[0] == 10: continue
             if block[0] == 127 and block[1] > 15 and block[1] < 32: continue
             if block[0] == 192 and block[1] == 168: continue
+            if block[0] == 0: continue
             block_str = "%d %d %d" % (block[0], block[1], block[2])
             t = Task(bucket = block_str)
             t.save()
