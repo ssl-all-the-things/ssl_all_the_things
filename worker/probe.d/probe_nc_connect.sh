@@ -25,6 +25,5 @@ if [ "$#" != "3" ]; then
     exit 1
 fi
 
-echo "use_nc $IP ${PORT}"
 use_nc "$IP" "${PORT}"
 
