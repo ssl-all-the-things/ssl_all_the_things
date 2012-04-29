@@ -2,7 +2,7 @@
 
 PROBE_DROP_ROOT="${PROBE_DROP_ROOT:-/tmp/drop_root}"
 PROBE_DIR="${PROBE_DIR:-probe.d}"
-PROBE_TIMEOUT="${PROBE_TIMEOUT:-10}"
+PROBE_TIMEOUT="${PROBE_TIMEOUT:-4}"
 
 ### Helper
 function number_is_octet() {
@@ -40,7 +40,7 @@ function probe_launcher() {
         SPEND_TIME=$(($CURRENT-$NOW))
 
         if [ "${SPEND_TIME}" -gt "${THE_PROBE_TIMEOUT}" ]; then
-            echo "Warning: Time out reached"
+            echo "Warning: Time out reached of ${THE_PROBE_TIMEOUT}"
             kill -15 $CHILD
             sleep 1
 
