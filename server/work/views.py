@@ -26,7 +26,7 @@ def done(request, id):
         task.finished = datetime.datetime.now()
         task.status = "F"
         task.save()
-        HttpResponse("OK")
+        return HttpResponse("OK")
 
     else:
         return HttpResponse("ERROR: Expecting POST request.")
