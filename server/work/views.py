@@ -3,7 +3,7 @@ from django.shortcuts import get_object_or_404, render_to_response
 from django.http import HttpResponseRedirect, HttpResponse
 from server.work.models import *
 import datetime
-from django.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt
 
 
 
