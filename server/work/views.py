@@ -3,6 +3,8 @@ from django.shortcuts import get_object_or_404, render_to_response
 from django.http import HttpResponseRedirect, HttpResponse
 from server.work.models import *
 import datetime
+from django.decorators.csrf import csrf_exempt
+
 
 
 def get_work(request, id):
@@ -13,6 +15,8 @@ def get_work(request, id):
     task.save()
     return HttpResponse("\n".join(["%s %d" % (task.bucket, octet) for octet in range(256)]))
 
+
+@csrf_exempt
 def done(request, id):
     if request.method == "POST":
         if not request.POST.has_key("ipblock"):
