@@ -3,7 +3,8 @@ from server.work.models import *
 
 class TaskAdmin(admin.ModelAdmin):
     list_display = ['bucket', 'status', 'started', 'finished', 'worker_id']
-    list_filter = ['status']
+    list_filter = ['status', 'worker_id']
+
 
 admin.site.register(Task, TaskAdmin)
 
