@@ -1,5 +1,7 @@
 # Django settings for server project.
 
+import logging
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
@@ -135,11 +137,15 @@ LOGGING = {
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler'
+        },
+        'logfile': {
+            'class': 'logging.handlers.WatchedFileHandler',
+            'filename': '/var/log/ssl_scanner.log',
         }
     },
     'loggers': {
         'django.request': {
-            'handlers': ['mail_admins'],
+            'handlers': ['logfile'],
             'level': 'ERROR',
             'propagate': True,
         },
