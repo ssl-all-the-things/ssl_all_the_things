@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 
 def get_work(request, id):
-    task = Task.objects.filter(status="O").order_by('?').all()[0]
+    task = Task.objects.filter(status="O").all()[0]
     task.status = "IP"
     task.started = datetime.datetime.now()
     task.worker_id = id
