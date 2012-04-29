@@ -4,8 +4,9 @@ from django.http import HttpResponseRedirect, HttpResponse
 from server.work.models import *
 import datetime
 from django.views.decorators.csrf import csrf_exempt
+import logging
 
-
+logger = logging.getLogger(__name__)
 
 def get_work(request, id):
     task = Task.objects.filter(status="O").all()[0]
@@ -25,9 +26,11 @@ def done(request, id):
         print "ipblock=\"%s\"" % (ip, )
         task = Task.objects.filter(bucket=ip).all()
         if not task:
+            logger.error("ERROR: No such ipblock %s" % (ip, ))
             return HttpResponse("ERROR: No such ipblock")
         task = task[0]
         if task.worker_id != id:
+            logger.error("ERROR: Invalid worker id")
             return HttpResponse("ERROR: Invalid worker id")
         task.finished = datetime.datetime.now()
         task.status = "F"
