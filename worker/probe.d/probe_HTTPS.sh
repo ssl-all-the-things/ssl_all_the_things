@@ -23,7 +23,6 @@ function probe_HTTPS() {
     $BOGUS_HTTP_REQ | \
         openssl s_client \
             -cipher `openssl ciphers` \
-            -tlsextdebug \
             -showcerts \
             -state \
             -connect "${CONNECT_STRING}" \
