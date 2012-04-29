@@ -27,3 +27,19 @@ Testing with Nikhef's HTTPS at 192.16.199.166
 Get work from Django App
 Post back that work is done and get a new job
 
+Protocol
+---
+
+Get
+...
+http://<service>/get/<make-up-a-nodeID>/
+Result:
+127 1 1 1\n127 1 1 2\n
+
+Done
+...
+POST
+http://<service>/done/<make-up-a-nodeID>/
+Data:
+ipblock=127 1 1 1
+
