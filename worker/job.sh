@@ -29,9 +29,7 @@ while [ 1 ]; do
     echo $MEH
     rm ${WORK_FILE}
 
-    curl -vv --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
-    sleep 2
-
+    curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
 done
 
 exit 0
