@@ -19,17 +19,25 @@ while [ 1 ]; do
     # Fetch new work
 
     WORK_FILE="/tmp/${WORKER_ID}.work"
+    echo "Trying GET: $line"
     curl "${CONNECT_BASE}/get/${WORKER_ID}/" > ${WORK_FILE} 2>/dev/null || continue
 
     cat ${WORK_FILE} | while read line ; do
+        echo "Trying: ./worker.sh $line"
         ./worker.sh $line
     done
 
     MEH=`tail -1 ${WORK_FILE}`
-    echo $MEH
     rm ${WORK_FILE}
 
-    curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+    UPLOAD=0
+    while [ "$UPLOAD" = "0" ]; do
+        echo "Trying POST: $line"
+        curl --data "ipblock=$MEH"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+        if [ "$?" = "0" ]; then
+            break
+        fi
+    done
 done
 
 exit 0
