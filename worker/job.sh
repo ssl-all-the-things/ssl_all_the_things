@@ -20,7 +20,12 @@ while [ 1 ]; do
 
     WORK_FILE="/tmp/${WORKER_ID}.work"
     echo "Trying GET: $line"
-    curl "${CONNECT_BASE}/get/${WORKER_ID}/" > ${WORK_FILE} 2>/dev/null || continue
+    curl -v "${CONNECT_BASE}/get/${WORKER_ID}/" > ${WORK_FILE} 2>/dev/null
+    RC=$?
+
+    if [ "$RC" != "0" ]; then
+        continue
+    fi
 
     cat ${WORK_FILE} | while read line ; do
         echo "Trying: ./worker.sh $line"
