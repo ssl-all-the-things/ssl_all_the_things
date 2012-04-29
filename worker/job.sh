@@ -1,23 +1,30 @@
 #!/bin/bash
 
-CONROL_IP="194.171.98.6"
-CONROL_PORT="80"
+CONTROL_IP="asen.nikhef.nl"
+CONTROL_PORT="8000"
 
-CONNECT_BASE="http://${CONTROL_IP}:80"
+CONNECT_BASE="http://${CONTROL_IP}:${CONTROL_PORT}"
 
 
-function done_ipblock(){
-    curl "${CONNECT_BASE}/done"
-}
-
+WORKER_ID=$(echo "`hostname`$$" | md5sum | cut -f1 -d" ")
+echo "Worker ID: $WORKER_ID"
 
 while [ 1 ]; do
     # Fetch new work
-    curl "${CONNECT_BASE}/get" | while read line ; do
-        echo "worker.sh $line"
-        sleep 1
-    done
 
-    sleep 10
+    WORK_FILE="/tmp/${WORKER_ID}.work"
+    curl "${CONNECT_BASE}/get/${WORKER_ID}/" > ${WORK_FILE} 2>/dev/null || continue
+
+    cat ${WORK_FILE} | while read line ; do
+        ./worker.sh $line
+    done
+    rm ${WORK_FILE}
+
+    curl --data "'$line'"  "${CONNECT_BASE}/done/${WORKER_ID}/"
+    sleep 2
 
 done
+
+exit 0
+
+
