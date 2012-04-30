@@ -43,3 +43,7 @@ http://<service>/done/<make-up-a-nodeID>/
 Data:
 ipblock=127 1 1 1
 
+Requirements:
+Fabric 
+Python 2.7
+Django 1.3+ (tested with 1.3 and 1.4)
