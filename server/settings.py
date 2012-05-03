@@ -140,7 +140,7 @@ LOGGING = {
         },
         'logfile': {
             'class': 'logging.handlers.WatchedFileHandler',
-            'filename': '/var/log/ssl_scanner.log',
+            'filename': 'ssl_scanner.log',
         }
     },
     'loggers': {
