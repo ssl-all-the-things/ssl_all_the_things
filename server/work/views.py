@@ -5,20 +5,22 @@ from server.work.models import *
 import datetime
 from django.views.decorators.csrf import csrf_exempt
 import logging
+import json
 
 logger = logging.getLogger(__name__)
 
-def get_work(request, id):
+def get_work(request):
     task = Task.objects.filter(status="O").all()[0]
     task.status = "IP"
     task.started = datetime.datetime.now()
-    task.worker_id = id
+    task.worker_id = request.META["REMOTE_ADDR"]
     task.save()
-    return HttpResponse("\n".join(["%s %d" % (task.bucket, octet) for octet in range(256)]))
+    ip = [int(i) for i in task.bucket.split(".")]
+    return HttpResponse(json.dumps({"id": task.id, "targets": ip}))
 
 
 @csrf_exempt
-def done(request, id):
+def done(request, worker, id):
     if request.method == "POST":
         if not request.POST.has_key("ipblock"):
             return HttpResponse("ERROR: Expecting an ip to be posted to ipblock.")
