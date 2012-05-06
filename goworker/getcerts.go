@@ -5,6 +5,7 @@ import (
     "fmt"
     "encoding/json"
     "net/http"
+    "net"
     "crypto/tls"
     "crypto/x509"
     "time"
@@ -71,7 +72,14 @@ func getcert(in chan WorkTodo,  out chan Status) {
     // Keep waiting for work
     for {
         target := <- in
-        conn, err := tls.Dial("tcp", target.target, &config)
+        tcpconn, err := net.DialTimeout("tcp", target.target, 5 * time.Second)
+        if err != nil {
+            out <- Status{target.target, false}
+            continue
+        }
+        conn := tls.Client(tcpconn, &config)
+        err = conn.Handshake()
+        //conn, err := tls.Dial("tcp", target.target, &config)
         if err != nil {
             out <- Status{target.target, false}
             continue
