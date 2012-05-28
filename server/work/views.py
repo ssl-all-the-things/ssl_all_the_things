@@ -18,28 +18,12 @@ def get_work(request):
     return HttpResponse(json.dumps({"Id": task.id, "C": task.c, "D":task.d}))
 
 
-@csrf_exempt
-def done(request, worker, id):
-    if request.method == "POST":
-        if not request.POST.has_key("ipblock"):
-            return HttpResponse("ERROR: Expecting an ip to be posted to ipblock.")
-        ip = " ".join(request.POST["ipblock"].split()[0:3])
-        print "ipblock=\"%s\"" % (ip, )
-        task = Task.objects.filter(bucket=ip).all()
-        if not task:
-            logger.error("ERROR: No such ipblock %s" % (ip, ))
-            return HttpResponse("ERROR: No such ipblock")
-        task = task[0]
-        if task.worker_id != id:
-            logger.error("ERROR: Invalid worker id")
-            return HttpResponse("ERROR: Invalid worker id")
-        task.finished = datetime.datetime.now()
-        task.status = "F"
-        task.save()
-        return HttpResponse("OK")
-
-    else:
-        return HttpResponse("ERROR: Expecting POST request.")
+def done(request, id):
+    task = get_object_or_404(Task, id=id)
+    task.status = "F"
+    task.finished = datetime.datetime.now()
+    task.save()
+    return HttpResponse("OK")
 
 
 
