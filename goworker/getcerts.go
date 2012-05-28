@@ -1,137 +1,130 @@
 package main
 
 import (
-    "flag"
-    "fmt"
-    "encoding/json"
-    "net/http"
-    "net"
-    "crypto/tls"
-    "crypto/x509"
-    "time"
-    "io/ioutil"
+	"crypto/tls"
+	"crypto/x509"
+	"encoding/json"
+	"flag"
+	"fmt"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"time"
 )
 
 // Configure the flags
 var nworkers = flag.Int("n", 256, "The number of concurrent connections.")
 
-// Struct for returning the status of a connection to a given host.
-type Status struct {
-    host    string
-    succes  bool
-
-}
-
 type WorkTodo struct {
-    target string
-    bucket_id int
+	Host   string
+	Bucket int
 }
 
 type WorkMessage struct {
-    Id int
-    Targets []int
+	Id   int
+	C, D int
 }
 
+func fill_workqueue(queue chan WorkTodo, host string) int {
+	target := fmt.Sprintf("%s/get/", host)
+	resp, err := http.Get(target)
+	defer resp.Body.Close()
+	if err != nil {
+		return 0
+	}
+	// Decode json
+	var m WorkMessage
+	body, err := ioutil.ReadAll(resp.Body)
+	err = json.Unmarshal(body, &m)
 
-func fill_workqueue(queue chan WorkTodo, host string) {
-    target := fmt.Sprintf("%s/get/", host)
-    fmt.Println(target)
-    for { // Keep getting new blocks
-        resp, err := http.Get(target)
-        if err != nil {
-            // Sleep on error before retry
-            time.Sleep(10 * time.Second)
-            continue
-        }
-        // Decode json
-        var m WorkMessage
-        body, err := ioutil.ReadAll(resp.Body)
-        err = json.Unmarshal(body, &m)
-        // List all IP's in block
-        a := m.Targets[0]
-        b := m.Targets[1]
-        for c := m.Targets[2]; c < m.Targets[2]+16; c++ {
-            for d := 0; d < 256; d++ {
-                queue <- WorkTodo{fmt.Sprintf("%d.%d.%d.%d:443", a, b, c, d), m.Id}
-            }
-        }
-        resp.Body.Close()
-    }
-} 
-
-
+	// List all IP's in block
+	total := 0
+	for a := 0; a < 256; a++ {
+		if a == 10 {
+			continue // RFC 1918
+		}
+		for b := 0; b <= 255; b++ {
+			if (a == 127) && (b > 15) && (b < 32) {
+				continue // RFC 1918
+			}
+			if (a == 192) && (b == 168) {
+				continue // RFC 1918
+			}
+			total++
+			queue <- WorkTodo{fmt.Sprintf("%d.%d.%d.%d:443", a, b, m.C, m.D), m.Id}
+		}
+	}
+	return total
+}
 
 func handle_cert(cert *x509.Certificate) {
-    fmt.Println(cert.Subject.CommonName)
+	fmt.Println(cert.Subject.CommonName)
 }
-
 
 // Worker function
-func getcert(in chan WorkTodo,  out chan Status) {
-    config := tls.Config{InsecureSkipVerify: true}
-    // Keep waiting for work
-    for {
-        target := <- in
-        tcpconn, err := net.DialTimeout("tcp", target.target, 5 * time.Second)
-        if err != nil {
-            out <- Status{target.target, false}
-            continue
-        }
-        conn := tls.Client(tcpconn, &config)
-        err = conn.Handshake()
-        //conn, err := tls.Dial("tcp", target.target, &config)
-        if err != nil {
-            out <- Status{target.target, false}
-            continue
-        }
-        err = conn.Handshake()
-        if err != nil {
-            out <- Status{target.target, false}
-            continue
-        }
-        state := conn.ConnectionState()
-        // TODO: store certificate
-        for _, cert := range state.PeerCertificates {
-            handle_cert(cert)
-        }
-        if state.HandshakeComplete {
-            out <- Status{target.target, true}
-        } else {
-            out <- Status{target.target, true}
-        }
-        conn.Close()
-    }
+func getcert(in chan WorkTodo, out chan int) {
+	config := tls.Config{InsecureSkipVerify: true}
+	// Keep waiting for work
+	for {
+		target := <-in
+		tcpconn, err := net.DialTimeout("tcp", target.Host, 5*time.Second)
+		if err != nil {
+			continue
+		}
+		conn := tls.Client(tcpconn, &config)
+		err = conn.Handshake()
+		//conn, err := tls.Dial("tcp", target.target, &config)
+		if err != nil {
+			continue
+		}
+		err = conn.Handshake()
+		if err != nil {
+			continue
+		}
+		state := conn.ConnectionState()
+		// TODO: store certificate
+		for _, cert := range state.PeerCertificates {
+			handle_cert(cert)
+		}
+		conn.Close()
+	}
 }
 
-
 func main() {
-    // Parse the commandline flags
-    flag.Parse()
-    fmt.Println(flag.NArg())
-    if flag.NArg() != 1 {
-        fmt.Println("Expected hostname")
-        return
-    }
-    host := flag.Arg(0)
+	// Parse the commandline flags
+	flag.Parse()
+	if flag.NArg() != 1 {
+		fmt.Println("Expected hostname")
+		return
+	}
+	host := flag.Arg(0)
 
-    // Make the worker chanels
-    in := make(chan WorkTodo, 2 * *nworkers)
-    out := make(chan Status, *nworkers)
+	// Make the worker chanels
+	in := make(chan WorkTodo, 2**nworkers)
+	out := make(chan int, *nworkers)
 
-    // Keep the work queue filled
-    go fill_workqueue(in, host)
+	//  Start the workers
+	for i := 0; i < *nworkers; i++ {
+		go getcert(in, out)
+	}
 
-    //  Start the workers
-    for i := 0; i < *nworkers; i++ {
-        go getcert(in, out)
-    }
-    // Wait for results
-    for {
-        res := <- out
-        if res.succes {
-            fmt.Printf("OK: %s\n", res.host)
-        }
-    }
+	// Main loop getting and handling work
+	for {
+		total := fill_workqueue(in, host)
 
+		// get results
+		for {
+			res := <-out
+			total--
+			fmt.Println(total)
+			if total == 0 {
+				// Report block as finished and break
+				// TODO: report block as finished
+
+				fmt.Printf("%V\n", res)
+				break // Break and get a new block
+			}
+		}
+	}
 
 }

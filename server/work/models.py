@@ -3,7 +3,9 @@ from django.db import models
 # Create your models here.
 
 class Task(models.Model):
-    bucket = models.CharField(max_length=12, db_index=True, unique=True)
+    # The work tasks  consist of *.*.c.d
+    c = models.IntegerField(db_index=True)
+    d = models.IntegerField(db_index=True)
     status = models.CharField(  max_length=4, 
                                 db_index=True,
                                 choices = (

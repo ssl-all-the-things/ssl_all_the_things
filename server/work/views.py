@@ -15,8 +15,7 @@ def get_work(request):
     task.started = datetime.datetime.now()
     task.worker_id = request.META["REMOTE_ADDR"]
     task.save()
-    ip = [int(i) for i in task.bucket.split(".")]
-    return HttpResponse(json.dumps({"id": task.id, "targets": ip}))
+    return HttpResponse(json.dumps({"Id": task.id, "C": task.c, "D":task.d}))
 
 
 @csrf_exempt
