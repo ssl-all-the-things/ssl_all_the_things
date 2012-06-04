@@ -7,7 +7,8 @@ class TaskAdmin(admin.ModelAdmin):
 
 
 admin.site.register(Task, TaskAdmin)
-
+admin.site.register(EndPoint)
+admin.site.register(Certificate)
 
 
 

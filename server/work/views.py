@@ -25,5 +25,18 @@ def done(request, id):
     task.save()
     return HttpResponse("OK")
 
+@csrf_exempt
+def post(request):
+    ip, port = request.POST["endpoint"].split(":")
+    print ip
+    endpoint, created = EndPoint.objects.get_or_create(ip=ip, port=port)
+    endpoint.save()
+    cert = Certificate(
+                        endpoint=endpoint,
+                        subject_commonname=request.POST["commonname"],
+                        pem=request.POST["pem"])
+    cert.save()
+    return HttpResponse("OK")
+
 
 

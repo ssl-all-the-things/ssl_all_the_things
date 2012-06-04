@@ -18,5 +18,24 @@ class Task(models.Model):
     finished = models.DateTimeField(null=True, blank=True)
     worker_id = models.CharField(max_length=64, null=True, blank=True)
 
+class EndPoint(models.Model):
+    ip = models.IPAddressField()
+    port = models.IntegerField()
+    rev_dns = models.CharField(max_length=256, null=True, blank=True)
+    
+    def __unicode__(self):
+        return u"%s:%s" % (self.ip, self.port)
+
+class Certificate(models.Model):
+    endpoint = models.ForeignKey(EndPoint)
+    subject_commonname = models.CharField(max_length=256, null=True, blank=True)
+    pem = models.TextField()
+
+    def __unicode__(self):
+        return self.subject_commonname
+
+    
+    
+
 
 

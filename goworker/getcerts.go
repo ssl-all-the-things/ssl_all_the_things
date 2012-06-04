@@ -4,11 +4,13 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/json"
+	"encoding/pem"
 	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"time"
 )
 
@@ -59,8 +61,17 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	return total, m.Id
 }
 
-func handle_cert(cert *x509.Certificate) {
-	fmt.Println(cert.Subject.CommonName)
+func handle_cert(cert *x509.Certificate, host string) {
+    block := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+    pemdata := string(pem.EncodeToMemory(&block))
+    formdata := url.Values{}
+    formdata.Set("commonname", cert.Subject.CommonName)
+    formdata.Set("pem", pemdata)
+    formdata.Set("endpoint", host)
+    _, err := http.PostForm("http://127.0.0.1:8000/post/", formdata)
+    if err != nil {
+        fmt.Println("ERROR posting cert")
+    }
 }
 
 // Worker function
@@ -88,7 +99,7 @@ func getcert(in chan WorkTodo, out chan int) {
 		state := conn.ConnectionState()
 		// TODO: store certificate
 		for _, cert := range state.PeerCertificates {
-			handle_cert(cert)
+			handle_cert(cert, target.Host)
 		}
 		conn.Close()
         out <- 1
@@ -128,9 +139,7 @@ func main() {
                 if err != nil {
                     fmt.Println("Error setting worklist as done")
                 }
-
-                // TODO: report block as finished
-
+                
 				break // Break and get a new block
 			}
 		}
