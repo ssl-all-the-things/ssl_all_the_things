@@ -76,10 +76,12 @@ func handle_cert(cert *x509.Certificate, host string) {
 	}
 }
 
-func handle_hostname(hostname string) {
+func handle_hostname(hostname string, ip string) {
 	formdata := url.Values{}
 	formdata.Set("hostname", hostname)
+	formdata.Set("ip", ip)
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+	fmt.Println(target)
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
 		fmt.Println("ERROR posting hostname")
@@ -94,7 +96,7 @@ func getcert(in chan WorkTodo, out chan int) {
 		target := <-in
 		hostname, err := net.LookupAddr(target.Host)
 		if err == nil {
-			handle_hostname(hostname[0])
+			handle_hostname(hostname[0], target.Host)
 		}
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
@@ -124,8 +126,6 @@ func getcert(in chan WorkTodo, out chan int) {
 }
 
 func main() {
-	host := serverinfo
-
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
 	out := make(chan int, 256*256)
@@ -135,12 +135,18 @@ func main() {
 		go getcert(in, out)
 	}
 
+	fail := 0
+
 	// Main loop getting and handling work
 	for {
-		total, id := fill_workqueue(in, host)
+		total, id := fill_workqueue(in, serverinfo)
 		if total == 0 {
 			fmt.Println("Failed to fetch work queue, retry")
-			//break
+			time.Sleep(1*time.Second)
+			fail++
+			if fail > 5 {
+				break
+			}
 		} else {
 			fmt.Println("Bucketid", id, "contains", total, "ip's")
 
@@ -150,7 +156,7 @@ func main() {
 				total--
 				if total == 0 {
 					// Report block as finished and break
-					target := fmt.Sprintf("http://%s/done/%d/", host, id)
+					target := fmt.Sprintf("http://%s/done/%d/", serverinfo, id)
 					fmt.Println(target)
 					_, err := http.Get(target)
 					if err != nil {
