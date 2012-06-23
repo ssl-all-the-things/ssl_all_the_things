@@ -16,6 +16,7 @@ import (
 
 // Configure the flags
 var nworkers = flag.Int("n", 256, "The number of concurrent connections.")
+var serverinfo = "ssl.iskansloos.nl"
 
 type WorkTodo struct {
 	Host   string
@@ -28,7 +29,7 @@ type WorkMessage struct {
 }
 
 func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
-	target := fmt.Sprintf("%s/get/", host)
+	target := fmt.Sprintf("http://%s/get/", host)
 	resp, err := http.Get(target)
 	if err != nil {
         fmt.Println("Error fetching worklist")
@@ -68,7 +69,8 @@ func handle_cert(cert *x509.Certificate, host string) {
     formdata.Set("commonname", cert.Subject.CommonName)
     formdata.Set("pem", pemdata)
     formdata.Set("endpoint", host)
-    _, err := http.PostForm("http://178.21.22.5:8000/post/", formdata)
+	target := fmt.Sprintf("http://%s/post/", serverinfo)
+    _, err := http.PostForm(target, formdata)
     if err != nil {
         fmt.Println("ERROR posting cert")
     }
@@ -77,17 +79,11 @@ func handle_cert(cert *x509.Certificate, host string) {
 func handle_hostname(hostname string) {
 	formdata := url.Values{}
 	formdata.Set("hostname", hostname)
-	_, err := http.PostForm("http://178.21.22.5:8000/hostname/", formdata)
+	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+	_, err := http.PostForm(target, formdata)
     if err != nil {
         fmt.Println("ERROR posting hostname")
     }
-}
-
-func getptr (ip string) {
-	hostname, err := net.LookupAddr(ip)
-	if err == nil {
-		handle_hostname(hostname[0])
-	}
 }
 
 // Worker function
@@ -96,7 +92,10 @@ func getcert(in chan WorkTodo, out chan int) {
 	// Keep waiting for work
 	for {
 		target := <-in
-		go getptr (target.Host)
+		hostname, err := net.LookupAddr(target.Host)
+		if err == nil {
+			handle_hostname(hostname[0])
+		}
 
         tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
@@ -125,13 +124,7 @@ func getcert(in chan WorkTodo, out chan int) {
 }
 
 func main() {
-	// Parse the commandline flags
-	flag.Parse()
-	if flag.NArg() != 1 {
-		fmt.Println("Expected hostname")
-		return
-	}
-	host := flag.Arg(0)
+	host := serverinfo
 
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
@@ -149,7 +142,7 @@ func main() {
 			fmt.Println("Failed to fetch work queue, retry")
 			//break
 		} else {
-		fmt.Println("Bucketid", id, "contains", total, "ip's")
+			fmt.Println("Bucketid", id, "contains", total, "ip's")
 
 			// get results
 			for {
