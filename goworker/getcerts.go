@@ -145,7 +145,10 @@ func main() {
 	// Main loop getting and handling work
 	for {
 		total, id := fill_workqueue(in, host)
-        fmt.Println("Bucketid", id, "contains", total, "ip's")
+		if total == 0 {
+			break
+		}
+		fmt.Println("Bucketid", id, "contains", total, "ip's")
 		// get results
 		for {
 			<-out
