@@ -68,7 +68,7 @@ func handle_cert(cert *x509.Certificate, host string) {
     formdata.Set("commonname", cert.Subject.CommonName)
     formdata.Set("pem", pemdata)
     formdata.Set("endpoint", host)
-    _, err := http.PostForm("http://127.0.0.1:8000/post/", formdata)
+    _, err := http.PostForm("http://178.21.22.5:8000/post/", formdata)
     if err != nil {
         fmt.Println("ERROR posting cert")
     }
@@ -77,7 +77,7 @@ func handle_cert(cert *x509.Certificate, host string) {
 func handle_hostname(hostname string) {
 	formdata := url.Values{}
 	formdata.Set("hostname", hostname)
-	_, err := http.PostForm("http://127.0.0.1:8000/hostname/", formdata)
+	_, err := http.PostForm("http://178.21.22.5:8000/hostname/", formdata)
     if err != nil {
         fmt.Println("ERROR posting hostname")
     }
@@ -91,8 +91,7 @@ func getcert(in chan WorkTodo, out chan int) {
 		target := <-in
 		hostname, err := net.LookupAddr(target.Host)
 		if err == nil {
-			fmt.Println(hostname)
-			//handle_hostname(hostname)
+			handle_hostname(hostname[0])
 		}
 
         tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
