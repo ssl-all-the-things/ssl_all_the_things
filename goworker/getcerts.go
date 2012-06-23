@@ -38,7 +38,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	var m WorkMessage
 	body, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(body, &m)
-    
+
     resp.Body.Close()
 
 	// List all IP's in block
@@ -74,12 +74,29 @@ func handle_cert(cert *x509.Certificate, host string) {
     }
 }
 
+func handle_hostname(hostname string) {
+	formdata := url.Values{}
+	formdata.Set("hostname", hostname)
+	_, err := http.PostForm("http://127.0.0.1:8000/posthostname/", formdata)
+    if err != nil {
+        fmt.Println("ERROR posting hostname")
+    }
+}
+
 // Worker function
 func getcert(in chan WorkTodo, out chan int) {
 	config := tls.Config{InsecureSkipVerify: true}
 	// Keep waiting for work
 	for {
 		target := <-in
+		hostname, err := net.LookupAddr(target.Host)
+		if err != nil {
+			fmt.Println(err)
+		}else{
+			fmt.Println(hostname)
+			//handle_hostname(hostname)
+		}
+
         tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
             out <- 1
@@ -139,7 +156,7 @@ func main() {
                 if err != nil {
                     fmt.Println("Error setting worklist as done")
                 }
-                
+
 				break // Break and get a new block
 			}
 		}
