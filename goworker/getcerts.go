@@ -33,6 +33,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	resp, err := http.Get(target)
 	if err != nil {
 		fmt.Println("Error fetching worklist")
+		fmt.Println(err)
 		return 0, 0
 	}
 	// Decode json
