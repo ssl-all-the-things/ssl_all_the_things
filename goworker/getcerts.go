@@ -148,13 +148,16 @@ func main() {
 			for {
 				<-out
 				total--
-				if total <= 0 {
+				if total == 0 {
 					// Report block as finished and break
 					target := fmt.Sprintf("http://%s/done/%d/", host, id)
+					fmt.Println(target)
 					_, err := http.Get(target)
 					if err != nil {
 						fmt.Println("Error setting worklist as done")
 					}
+
+					break
 				}
 			}
 		}
