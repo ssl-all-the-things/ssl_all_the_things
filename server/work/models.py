@@ -35,6 +35,7 @@ class Certificate(models.Model):
         return self.subject_commonname
 
 class Hostname(models.Model):
+	ip = models.IPAddressField()
     hostname = models.CharField(max_length=256, null=False, blank=False)
 
     def __unicode__(self):
