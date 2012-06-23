@@ -21,5 +21,6 @@ urlpatterns = patterns('',
     url(r'^get/$', 'server.work.views.get_work'),
     url(r'^done/(?P<id>[0-9]*)/$', 'server.work.views.done'),
     url(r'post/$', 'server.work.views.post'),
+    url(r'hostname/$', 'server.work.views.posthostname'),
 
 )

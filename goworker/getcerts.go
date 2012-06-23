@@ -77,7 +77,7 @@ func handle_cert(cert *x509.Certificate, host string) {
 func handle_hostname(hostname string) {
 	formdata := url.Values{}
 	formdata.Set("hostname", hostname)
-	_, err := http.PostForm("http://127.0.0.1:8000/posthostname/", formdata)
+	_, err := http.PostForm("http://127.0.0.1:8000/hostname/", formdata)
     if err != nil {
         fmt.Println("ERROR posting hostname")
     }

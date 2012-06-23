@@ -38,5 +38,8 @@ def post(request):
     cert.save()
     return HttpResponse("OK")
 
-
-
+@csrf_exempt
+def posthostname(request):
+    hostname, created = Hostname.objects.get_or_create(hostname=request.POST["hostname"])
+    hostname.save()
+    return HttpResponse("OK")
