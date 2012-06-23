@@ -146,22 +146,25 @@ func main() {
 	for {
 		total, id := fill_workqueue(in, host)
 		if total == 0 {
-			break
-		}
+			fmt.Println("Failed to fetch work queue, retry")
+			//break
+		} else {
 		fmt.Println("Bucketid", id, "contains", total, "ip's")
-		// get results
-		for {
-			<-out
-			total--
-			if total == 0 {
-				// Report block as finished and break
-				target := fmt.Sprintf("%s/done/%d/", host, id)
-                _, err := http.Get(target)
-                if err != nil {
-                    fmt.Println("Error setting worklist as done")
-                }
 
-				break // Break and get a new block
+			// get results
+			for {
+				<-out
+				total--
+				if total == 0 {
+					// Report block as finished and break
+					target := fmt.Sprintf("%s/done/%d/", host, id)
+	                _, err := http.Get(target)
+	                if err != nil {
+	                    fmt.Println("Error setting worklist as done")
+	                }
+
+					//break // Break and get a new block
+				}
 			}
 		}
 	}
