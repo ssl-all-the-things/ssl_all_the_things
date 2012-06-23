@@ -24,7 +24,7 @@ type WorkTodo struct {
 }
 
 type WorkMessage struct {
-	Id   int
+	Id	 int
 	C, D int
 }
 
@@ -32,7 +32,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	target := fmt.Sprintf("http://%s/get/", host)
 	resp, err := http.Get(target)
 	if err != nil {
-        fmt.Println("Error fetching worklist")
+		fmt.Println("Error fetching worklist")
 		return 0, 0
 	}
 	// Decode json
@@ -40,7 +40,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	body, err := ioutil.ReadAll(resp.Body)
 	err = json.Unmarshal(body, &m)
 
-    resp.Body.Close()
+	resp.Body.Close()
 
 	// List all IP's in block
 	total := 0
@@ -63,17 +63,17 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 }
 
 func handle_cert(cert *x509.Certificate, host string) {
-    block := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
-    pemdata := string(pem.EncodeToMemory(&block))
-    formdata := url.Values{}
-    formdata.Set("commonname", cert.Subject.CommonName)
-    formdata.Set("pem", pemdata)
-    formdata.Set("endpoint", host)
+	block := pem.Block{Type: "CERTIFICATE", Bytes: cert.Raw}
+	pemdata := string(pem.EncodeToMemory(&block))
+	formdata := url.Values{}
+	formdata.Set("commonname", cert.Subject.CommonName)
+	formdata.Set("pem", pemdata)
+	formdata.Set("endpoint", host)
 	target := fmt.Sprintf("http://%s/post/", serverinfo)
-    _, err := http.PostForm(target, formdata)
-    if err != nil {
-        fmt.Println("ERROR posting cert")
-    }
+	_, err := http.PostForm(target, formdata)
+	if err != nil {
+		fmt.Println("ERROR posting cert")
+	}
 }
 
 func handle_hostname(hostname string) {
@@ -81,9 +81,9 @@ func handle_hostname(hostname string) {
 	formdata.Set("hostname", hostname)
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 	_, err := http.PostForm(target, formdata)
-    if err != nil {
-        fmt.Println("ERROR posting hostname")
-    }
+	if err != nil {
+		fmt.Println("ERROR posting hostname")
+	}
 }
 
 // Worker function
@@ -97,20 +97,20 @@ func getcert(in chan WorkTodo, out chan int) {
 			handle_hostname(hostname[0])
 		}
 
-        tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
+		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
-            out <- 1
+			out <- 1
 			continue
 		}
 		conn := tls.Client(tcpconn, &config)
 		err = conn.Handshake()
 		if err != nil {
-            out <- 1
+			out <- 1
 			continue
 		}
 		err = conn.Handshake()
 		if err != nil {
-            out <- 1
+			out <- 1
 			continue
 		}
 		state := conn.ConnectionState()
@@ -119,7 +119,7 @@ func getcert(in chan WorkTodo, out chan int) {
 			handle_cert(cert, target.Host)
 		}
 		conn.Close()
-        out <- 1
+		out <- 1
 	}
 }
 
@@ -130,8 +130,8 @@ func main() {
 	in := make(chan WorkTodo, 256*256)
 	out := make(chan int, 256*256)
 
-	//  Start the workers
-    for i := 0; i < *nworkers; i++ {
+	//	Start the workers
+	for i := 0; i < *nworkers; i++ {
 		go getcert(in, out)
 	}
 
@@ -148,15 +148,13 @@ func main() {
 			for {
 				<-out
 				total--
-				if total == 0 {
+				if total <= 0 {
 					// Report block as finished and break
-					target := fmt.Sprintf("%s/done/%d/", host, id)
-	                _, err := http.Get(target)
-	                if err != nil {
-	                    fmt.Println("Error setting worklist as done")
-	                }
-
-					//break // Break and get a new block
+					target := fmt.Sprintf("http://%s/done/%d/", host, id)
+					_, err := http.Get(target)
+					if err != nil {
+						fmt.Println("Error setting worklist as done")
+					}
 				}
 			}
 		}
