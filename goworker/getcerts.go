@@ -83,16 +83,20 @@ func handle_hostname(hostname string) {
     }
 }
 
+func getptr (ip string) {
+	hostname, err := net.LookupAddr(ip)
+	if err == nil {
+		handle_hostname(hostname[0])
+	}
+}
+
 // Worker function
 func getcert(in chan WorkTodo, out chan int) {
 	config := tls.Config{InsecureSkipVerify: true}
 	// Keep waiting for work
 	for {
 		target := <-in
-		hostname, err := net.LookupAddr(target.Host)
-		if err == nil {
-			handle_hostname(hostname[0])
-		}
+		go getptr (target.Host)
 
         tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
