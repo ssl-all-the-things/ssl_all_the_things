@@ -90,9 +90,7 @@ func getcert(in chan WorkTodo, out chan int) {
 	for {
 		target := <-in
 		hostname, err := net.LookupAddr(target.Host)
-		if err != nil {
-			fmt.Println(err)
-		}else{
+		if err == nil {
 			fmt.Println(hostname)
 			//handle_hostname(hostname)
 		}
