@@ -17,7 +17,7 @@ import (
 
 // Configure the flags
 var nworkers = flag.Int("n", 256, "The number of concurrent connections.")
-var serverinfo = "178.21.22.5:8000"
+var serverinfo = "ssl.iskansloos.nl"
 
 type WorkTodo struct {
 	Host   string
