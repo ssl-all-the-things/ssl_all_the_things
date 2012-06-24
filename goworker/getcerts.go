@@ -80,20 +80,22 @@ func handle_cert(cert *x509.Certificate, host string) {
 }
 
 func handle_hostname(hostnames ptr) {
-	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+	if len(hostnames) > 0 {
+		target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 
-	formdata := url.Values{}
-	c := 0
-	for i, v := range hostnames {
-		varname := fmt.Sprintf("hostname[%d]", c)
-		value := fmt.Sprintf("%s:%s", i, v)
-		fmt.Println(varname, value)
-		formdata.Set(varname,value)
-		c++
-	}
-	_, err := http.PostForm(target, formdata)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+		formdata := url.Values{}
+		c := 0
+		for i, v := range hostnames {
+			varname := fmt.Sprintf("hostname[%d]", c)
+			value := fmt.Sprintf("%s:%s", i, v)
+			fmt.Println(varname, value)
+			formdata.Set(varname,value)
+			c++
+		}
+		_, err := http.PostForm(target, formdata)
+		if err != nil {
+			fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+		}
 	}
 }
 
