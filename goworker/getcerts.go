@@ -96,10 +96,10 @@ func getcert(in chan WorkTodo, out chan int) {
 	// Keep waiting for work
 	for {
 		target := <-in
-		ip = strings.Split(target.Host, ":")
+		ip := strings.Split(target.Host, ":")
 		hostname, err := net.LookupAddr(ip[0])
 		if err == nil {
-			handle_hostname(hostname[0], target.Host)
+			handle_hostname(hostname[0], ip[0])
 		}
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
