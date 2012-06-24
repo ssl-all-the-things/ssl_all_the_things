@@ -29,6 +29,11 @@ type WorkMessage struct {
 	C, D int
 }
 
+type WorkHostnames struct {
+	Hostname	string
+	ip 			string
+}
+
 func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	target := fmt.Sprintf("http://%s/get/", host)
 	resp, err := http.Get(target)
@@ -77,10 +82,12 @@ func handle_cert(cert *x509.Certificate, host string) {
 	}
 }
 
-func handle_hostname(hostname string, ip string) {
+func handle_hostname(hostnames []WorkHostnames) {
 	formdata := url.Values{}
-	formdata.Set("hostname", hostname)
-	formdata.Set("ip", ip)
+	for _, i := range hostnames {
+		fmt.Println(fmt.Sprintf("%s", i))
+		//formdata.Set(fmt.Sprintf("hostname[%s]", c), i)
+	}
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
@@ -91,13 +98,14 @@ func handle_hostname(hostname string, ip string) {
 // Worker function
 func getcert(in chan WorkTodo, out chan int) {
 	config := tls.Config{InsecureSkipVerify: true}
+	var done = []WorkHostnames {}
 	// Keep waiting for work
 	for {
 		target := <-in
 		ip := strings.Split(target.Host, ":")
 		hostname, err := net.LookupAddr(ip[0])
 		if err == nil {
-			handle_hostname(hostname[0], ip[0])
+			done = append(done, WorkHostnames{hostname[0], ip[0]})
 		}
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
@@ -120,6 +128,7 @@ func getcert(in chan WorkTodo, out chan int) {
 		// TODO: store certificate
 		for _, cert := range state.PeerCertificates {
 			handle_cert(cert, target.Host)
+			handle_hostname(done)
 		}
 		conn.Close()
 		out <- 1
