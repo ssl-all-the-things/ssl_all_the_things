@@ -84,10 +84,8 @@ func handle_cert(cert *x509.Certificate, host string) {
 
 func handle_hostname(hostnames []WorkHostnames) {
 	formdata := url.Values{}
-	for _, i := range hostnames {
-		fmt.Println(fmt.Sprintf("%s", i))
-		//formdata.Set(fmt.Sprintf("hostname[%s]", c), i)
-	}
+	json := json.MarshalJSON(hostnames)
+	formdata.Set("hostnames", json)
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
