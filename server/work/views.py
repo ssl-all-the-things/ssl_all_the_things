@@ -40,8 +40,8 @@ def post(request):
 
 @csrf_exempt
 def posthostname(request):
-    /*
-	hostname, created = Hostname.objects.get_or_create(ip=request.POST["ip"], hostname=request.POST["hostname"])
-    hostname.save()
-	*/
-    return HttpResponse(request.POST)
+    hostname=request.POST["hostname"]
+    for h, i in hostname:
+        obj, created = Hostname.objects.get_or_create(ip=i, hostname=h)
+        obj.save()
+    return HttpResponse("OK")
