@@ -28,7 +28,6 @@ def done(request, id):
 @csrf_exempt
 def post(request):
     ip, port = request.POST["endpoint"].split(":")
-    print ip
     endpoint, created = EndPoint.objects.get_or_create(ip=ip, port=port)
     endpoint.save()
     cert = Certificate(
@@ -41,6 +40,7 @@ def post(request):
 @csrf_exempt
 def posthostname(request):
     hostname=request.POST["hostname"]
+	print hostname
     for h, i in hostname:
         obj, created = Hostname.objects.get_or_create(ip=i, hostname=h)
         obj.save()

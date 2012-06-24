@@ -83,8 +83,13 @@ func handle_hostname(hostnames ptr) {
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 
 	formdata := url.Values{}
+	c := 0
 	for i, v := range hostnames {
-		formdata.Set(fmt.Sprintf("hostname[%s]", i), v)
+		varname := fmt.Sprintf("hostname[%d]", c)
+		value := fmt.Sprintf("%s:%s", i, v)
+		fmt.Println(varname, value)
+		formdata.Set(varname,value)
+		c++
 	}
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
