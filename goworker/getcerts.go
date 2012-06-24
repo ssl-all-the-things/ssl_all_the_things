@@ -79,7 +79,7 @@ func handle_cert(cert *x509.Certificate, host string) {
 	}
 }
 
-func handle_hostname(hostnames ptr) {
+func handle_hostname(hostnames ptr) (ptr) {
 	if len(hostnames) > 0 {
 		target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 
@@ -95,8 +95,11 @@ func handle_hostname(hostnames ptr) {
 		_, err := http.PostForm(target, formdata)
 		if err != nil {
 			fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+			return hostnames
 		}
 	}
+
+	return ptr {}
 }
 
 // Worker function
@@ -132,7 +135,7 @@ func getcert(in chan WorkTodo, out chan int) {
 		// TODO: store certificate
 		for _, cert := range state.PeerCertificates {
 			handle_cert(cert, target.Host)
-			handle_hostname(done)
+			done = handle_hostname(done)
 		}
 		conn.Close()
 		out <- 1
