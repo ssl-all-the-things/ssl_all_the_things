@@ -29,10 +29,7 @@ type WorkMessage struct {
 	C, D int
 }
 
-type WorkHostnames struct {
-	Hostname	string
-	ip 			string
-}
+type ptr map[string]string
 
 func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	target := fmt.Sprintf("http://%s/get/", host)
@@ -82,11 +79,13 @@ func handle_cert(cert *x509.Certificate, host string) {
 	}
 }
 
-func handle_hostname(hostnames []WorkHostnames) {
-	formdata := url.Values{}
-	json := json.MarshalJSON(hostnames)
-	formdata.Set("hostnames", json)
+func handle_hostname(hostnames ptr) {
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+
+	formdata := url.Values{}
+	for i, v := range hostnames {
+		formdata.Set(fmt.Sprintf("hostname[%s]", i), v)
+	}
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
 		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
@@ -96,14 +95,14 @@ func handle_hostname(hostnames []WorkHostnames) {
 // Worker function
 func getcert(in chan WorkTodo, out chan int) {
 	config := tls.Config{InsecureSkipVerify: true}
-	var done = []WorkHostnames {}
+	var done = ptr{ }
 	// Keep waiting for work
 	for {
 		target := <-in
 		ip := strings.Split(target.Host, ":")
 		hostname, err := net.LookupAddr(ip[0])
 		if err == nil {
-			done = append(done, WorkHostnames{hostname[0], ip[0]})
+			done[hostname[0]] = ip[0]
 		}
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
