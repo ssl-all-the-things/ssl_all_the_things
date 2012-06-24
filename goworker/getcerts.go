@@ -33,8 +33,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	target := fmt.Sprintf("http://%s/get/", host)
 	resp, err := http.Get(target)
 	if err != nil {
-		fmt.Println("Error fetching worklist")
-		fmt.Println(err)
+		fmt.Println(fmt.Sprintf("Error fetching worklist: %s", err))
 		return 0, 0
 	}
 	// Decode json
@@ -74,7 +73,7 @@ func handle_cert(cert *x509.Certificate, host string) {
 	target := fmt.Sprintf("http://%s/post/", serverinfo)
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
-		fmt.Println("ERROR posting cert")
+		fmt.Println(fmt.Sprintf("ERROR posting cert: %s", err))
 	}
 }
 
@@ -83,10 +82,9 @@ func handle_hostname(hostname string, ip string) {
 	formdata.Set("hostname", hostname)
 	formdata.Set("ip", ip)
 	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
-	fmt.Println(target)
 	_, err := http.PostForm(target, formdata)
 	if err != nil {
-		fmt.Println("ERROR posting hostname")
+		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
 	}
 }
 
@@ -163,7 +161,7 @@ func main() {
 					fmt.Println(target)
 					_, err := http.Get(target)
 					if err != nil {
-						fmt.Println("Error setting worklist as done")
+						fmt.Println(fmt.Sprintf("Error setting worklist as done: %s", err))
 					}
 
 					break
