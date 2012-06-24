@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	"strings"
 )
 
 // Configure the flags
@@ -50,7 +51,7 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 			continue // RFC 1918
 		}
 		for b := 0; b <= 255; b++ {
-			if (a == 127) && (b > 15) && (b < 32) {
+			if (a == 172) && (b > 15) && (b < 32) {
 				continue // RFC 1918
 			}
 			if (a == 192) && (b == 168) {
@@ -95,10 +96,11 @@ func getcert(in chan WorkTodo, out chan int) {
 	// Keep waiting for work
 	for {
 		target := <-in
-		#hostname, err := net.LookupAddr(target.Host)
-		#if err == nil {
-		#	handle_hostname(hostname[0], target.Host)
-		#}
+		ip = strings.Split(target.Host, ":")
+		hostname, err := net.LookupAddr(ip[0])
+		if err == nil {
+			handle_hostname(hostname[0], target.Host)
+		}
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
