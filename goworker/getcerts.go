@@ -171,6 +171,8 @@ func main() {
 				update_block_done(serverinfo, id)
 			}
 		}
+
+		fmt.Println("WorkTodo lenght:", len(in), "update: ", update)
 	}
 
 }
