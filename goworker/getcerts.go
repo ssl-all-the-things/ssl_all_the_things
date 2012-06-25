@@ -173,7 +173,7 @@ func main() {
 		}
 
 		time.Sleep(1 * time.Second)
-		fmt.Println("Done:", len(in)/cap(in), "%")
+		fmt.Println("Done:", len(in)/cap(in)*100, "%")
 	}
 
 }
