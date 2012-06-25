@@ -29,7 +29,10 @@ type WorkMessage struct {
 	C, D int
 }
 
-type ptr map[string]string
+type PTRrecord struct {
+	Host 	string
+	IP 		string
+}
 
 func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	target := fmt.Sprintf("http://%s/get/", host)
@@ -79,27 +82,22 @@ func handle_cert(cert *x509.Certificate, host string) {
 	}
 }
 
-func handle_hostname(hostnames ptr) (ptr) {
-	if len(hostnames) > 0 {
-		target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+func handle_hostname(done chan PTRrecord) {
+	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 
-		formdata := url.Values{}
-		c := 0
-		for i, v := range hostnames {
-			varname := fmt.Sprintf("hostname[%d]", c)
-			value := fmt.Sprintf("%s:%s", i, v)
-			fmt.Println(varname, value)
-			formdata.Set(varname,value)
-			c++
-		}
-		_, err := http.PostForm(target, formdata)
-		if err != nil {
-			fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
-			return hostnames
-		}
+	formdata := url.Values{}
+	c := 0
+	for v := range done {
+		varname := fmt.Sprintf("hostname[%d]", c)
+		value := fmt.Sprintf("%s:%s", v["Host"], v["IP"])
+		fmt.Println(varname, value)
+		formdata.Set(varname, value)
+		c++
 	}
-
-	return ptr {}
+	_, err := http.PostForm(target, formdata)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+	}
 }
 
 // Report block as finished and break
@@ -111,18 +109,21 @@ func update_block_done(host string, id int) {
 	}
 }
 
+func lookup_PTRrecord (done chan PTRrecord, ip string) {
+	hostname, err := net.LookupAddr(ip)
+	if err == nil {
+		done <- PTRrecord{hostname, ip}
+	}
+}
+
 // Worker function
-func getcert(in chan WorkTodo) {
+func getcert(in chan WorkTodo, done chan PTRrecord) {
 	config := tls.Config{InsecureSkipVerify: true}
-	var done = ptr{ }
 	// Keep waiting for work
 	for {
 		target := <-in
 		ip := strings.Split(target.Host, ":")
-		hostname, err := net.LookupAddr(ip[0])
-		if err == nil {
-			done[hostname[0]] = ip[0]
-		}
+		go lookup_PTRrecord(done, ip[0])
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
@@ -141,7 +142,6 @@ func getcert(in chan WorkTodo) {
 		// TODO: store certificate
 		for _, cert := range state.PeerCertificates {
 			handle_cert(cert, target.Host)
-			done = handle_hostname(done)
 		}
 		conn.Close()
 	}
@@ -150,10 +150,11 @@ func getcert(in chan WorkTodo) {
 func main() {
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
+	done := make(chan PTRrecord, 256*256)
 
 	//	Start the workers
 	for i := 0; i < *nworkers; i++ {
-		go getcert(in)
+		go getcert(in, done)
 	}
 
 	// Don't update on the first run
@@ -170,6 +171,10 @@ func main() {
 			}
 
 			update = true
+		}
+
+		if len(done) > 50 {
+			handle_hostname(done)
 		}
 
 		percent := len(in)/cap(in)*100
