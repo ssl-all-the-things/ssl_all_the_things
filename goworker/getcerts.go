@@ -165,11 +165,11 @@ func main() {
 			total, id := fill_workqueue(in, serverinfo)
 			fmt.Println("Bucketid", id, "contains", total, "ip's")
 
-			update = true
-
 			if update {
 				update_block_done(serverinfo, id)
 			}
+
+			update = true
 		}
 
 		time.Sleep(1 * time.Second)
