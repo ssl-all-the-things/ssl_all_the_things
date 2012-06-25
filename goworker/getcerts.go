@@ -172,9 +172,9 @@ func main() {
 			update = true
 		}
 
-		time.Sleep(1 * time.Second)
 		percent := len(in)/cap(in)*100
 		fmt.Println("Done:", percent,"%", len(in), "/", cap(in))
+		time.Sleep(1 * time.Second)
 	}
 
 }
