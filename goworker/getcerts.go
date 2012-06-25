@@ -102,8 +102,17 @@ func handle_hostname(hostnames ptr) (ptr) {
 	return ptr {}
 }
 
+// Report block as finished and break
+func update_block_done(host string, id int) {
+	target := fmt.Sprintf("http://%s/done/%d/", host, id)
+	_, err := http.Get(target)
+	if err != nil {
+	    fmt.Println("Error setting worklist as done ", err)
+	}
+}
+
 // Worker function
-func getcert(in chan WorkTodo, out chan int) {
+func getcert(in chan WorkTodo) {
 	config := tls.Config{InsecureSkipVerify: true}
 	var done = ptr{ }
 	// Keep waiting for work
@@ -117,18 +126,15 @@ func getcert(in chan WorkTodo, out chan int) {
 
 		tcpconn, err := net.DialTimeout("tcp", target.Host, 2*time.Second)
 		if err != nil {
-			out <- 1
 			continue
 		}
 		conn := tls.Client(tcpconn, &config)
 		err = conn.Handshake()
 		if err != nil {
-			out <- 1
 			continue
 		}
 		err = conn.Handshake()
 		if err != nil {
-			out <- 1
 			continue
 		}
 		state := conn.ConnectionState()
@@ -138,50 +144,31 @@ func getcert(in chan WorkTodo, out chan int) {
 			done = handle_hostname(done)
 		}
 		conn.Close()
-		out <- 1
 	}
 }
 
 func main() {
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
-	out := make(chan int, 256*256)
 
 	//	Start the workers
 	for i := 0; i < *nworkers; i++ {
-		go getcert(in, out)
+		go getcert(in)
 	}
 
-	fail := 0
+	// Don't update on the first run
+	update := false
 
 	// Main loop getting and handling work
 	for {
-		total, id := fill_workqueue(in, serverinfo)
-		if total == 0 {
-			fmt.Println("Failed to fetch work queue, retry")
-			time.Sleep(1*time.Second)
-			fail++
-			if fail > 5 {
-				break
-			}
-		} else {
+		if len(in) == 0 {
+			total, id := fill_workqueue(in, serverinfo)
 			fmt.Println("Bucketid", id, "contains", total, "ip's")
 
-			// get results
-			for {
-				<-out
-				total--
-				if total == 0 {
-					// Report block as finished and break
-					target := fmt.Sprintf("http://%s/done/%d/", serverinfo, id)
-					fmt.Println(target)
-					_, err := http.Get(target)
-					if err != nil {
-						fmt.Println(fmt.Sprintf("Error setting worklist as done: %s", err))
-					}
+			update = true
 
-					break
-				}
+			if update {
+				update_block_done(serverinfo, id)
 			}
 		}
 	}
