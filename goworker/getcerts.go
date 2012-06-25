@@ -172,7 +172,8 @@ func main() {
 			}
 		}
 
-		fmt.Println("WorkTodo lenght:", len(in), "update: ", update)
+		time.Sleep(1 * time.Second)
+		fmt.Println("Done:", len(in)/cap(in), "%")
 	}
 
 }
