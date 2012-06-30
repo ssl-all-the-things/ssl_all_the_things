@@ -89,7 +89,7 @@ func handle_hostname(done chan PTRrecord) {
 	c := 0
 	for v := range done {
 		varname := fmt.Sprintf("hostname[%d]", c)
-		value := fmt.Sprintf("%s:%s", v["Host"], v["IP"])
+		value := fmt.Sprintf("%s:%s", v.Host, v.IP)
 		fmt.Println(varname, value)
 		formdata.Set(varname, value)
 		c++
@@ -112,7 +112,7 @@ func update_block_done(host string, id int) {
 func lookup_PTRrecord (done chan PTRrecord, ip string) {
 	hostname, err := net.LookupAddr(ip)
 	if err == nil {
-		done <- PTRrecord{hostname, ip}
+		done <- PTRrecord{hostname[0], ip}
 	}
 }
 
