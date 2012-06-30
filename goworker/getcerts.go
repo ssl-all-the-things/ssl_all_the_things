@@ -17,6 +17,7 @@ import (
 
 // Configure the flags
 var nworkers = flag.Int("n", 256, "The number of concurrent connections.")
+var sem = make(chan int, MaxOutstanding)
 var serverinfo = "ssl.iskansloos.nl"
 
 type WorkTodo struct {
@@ -87,6 +88,7 @@ func handle_hostname(done chan PTRrecord) {
 
 	formdata := url.Values{}
 	c := 0
+	sem <- 1    // Wait for active queue to drain.
 	for v := range done {
 		varname := fmt.Sprintf("hostname[%d]", c)
 		value := fmt.Sprintf("%s:%s", v.Host, v.IP)
@@ -98,6 +100,7 @@ func handle_hostname(done chan PTRrecord) {
 	if err != nil {
 		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
 	}
+	<-sem       // Done; enable next request to run.
 }
 
 // Report block as finished and break
