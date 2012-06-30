@@ -180,8 +180,8 @@ func main() {
 			handle_hostname(done)
 		}
 
-		percent := len(in)/cap(in)*100
-		fmt.Println(fmt.Sprintf("%d", wqid), "done:", fmt.Sprintf("%d%%", percent), len(in), "/", cap(in), "backlog:", len(done))
+		percent := float64(len(in))/float64(cap(in))*100.00
+		fmt.Println(fmt.Sprintf("%d", wqid), "done:", fmt.Sprintf("%f%%", percent), len(in), "/", cap(in), "backlog:", len(done))
 		time.Sleep(1 * time.Second)
 	}
 
