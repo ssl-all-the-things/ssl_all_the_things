@@ -45,6 +45,10 @@ func fill_workqueue(queue chan WorkTodo, host string) (int, int) {
 	// Decode json
 	var m WorkMessage
 	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println(fmt.Sprintf("Error reading worklist: %s", err))
+		return 0, 0
+	}
 	err = json.Unmarshal(body, &m)
 
 	resp.Body.Close()
@@ -92,10 +96,10 @@ func handle_hostname(done chan PTRrecord) {
 		v = <- done
 		formdata.Set(fmt.Sprintf("hostname[%d]", c), fmt.Sprintf("%s:%s", v.Host, v.IP))
 	}
-	_, err := http.PostForm(target, formdata)
-	if err != nil {
-		fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
-	}
+	#_, err := http.PostForm(target, formdata)
+	#if err != nil {
+	#	fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+	#}
 }
 
 // Report block as finished and break
@@ -149,6 +153,7 @@ func main() {
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
 	done := make(chan PTRrecord, 256*256)
+	var total, id int
 
 	//	Start the workers
 	for i := 0; i < *nworkers; i++ {
@@ -161,7 +166,7 @@ func main() {
 	// Main loop getting and handling work
 	for {
 		if len(in) == 0 {
-			total, id := fill_workqueue(in, serverinfo)
+			total, id = fill_workqueue(in, serverinfo)
 			fmt.Println("Bucketid", id, "contains", total, "ip's")
 
 			if update {
@@ -175,8 +180,7 @@ func main() {
 			handle_hostname(done)
 		}
 
-		percent := len(in)/cap(in)*100
-		fmt.Println("Done:", percent,"%", len(in), "/", cap(in), "backlog:", len(done))
+		fmt.Println(id, "done:", len(in), "/", cap(in), "backlog:", len(done))
 		time.Sleep(1 * time.Second)
 	}
 
