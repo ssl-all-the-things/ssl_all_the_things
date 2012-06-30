@@ -88,7 +88,7 @@ func handle_hostname(done chan PTRrecord) {
 
 	var v PTRrecord
 	formdata := url.Values{}
-	for c := 0; c < nworkers; c++ {
+	for c := 0; c < *nworkers; c++ {
 		v = <- done
 		formdata.Set(fmt.Sprintf("hostname[%d]", c), fmt.Sprintf("%s:%s", v.Host, v.IP))
 	}
@@ -171,7 +171,7 @@ func main() {
 			update = true
 		}
 
-		if len(done) > nworkers {
+		if len(done) > *nworkers {
 			handle_hostname(done)
 		}
 
