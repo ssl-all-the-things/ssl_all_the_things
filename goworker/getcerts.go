@@ -89,7 +89,7 @@ func handle_cert(cert *x509.Certificate, host string) {
 }
 
 func handle_hostname(done chan PTRrecord) {
-	target := fmt.Sprintf("http://%s/hostname/", serverinfo)
+	//target := fmt.Sprintf("http://%s/hostname/", serverinfo)
 
 	var v PTRrecord
 	formdata := url.Values{}
@@ -180,7 +180,8 @@ func main() {
 			handle_hostname(done)
 		}
 
-		fmt.Println(wqid, "done:", len(in), "of", cap(in), "backlog:", len(done))
+		percent := len(in)/cap(in)*100
+		fmt.Println(fmt.Sprintf("%d", wqid), "done:", fmt.Sprintf("%d%%", percent), len(in), "/", cap(in), "backlog:", len(done))
 		time.Sleep(1 * time.Second)
 	}
 
