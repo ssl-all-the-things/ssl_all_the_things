@@ -96,10 +96,10 @@ func handle_hostname(done chan PTRrecord) {
 		v = <- done
 		formdata.Set(fmt.Sprintf("hostname[%d]", c), fmt.Sprintf("%s:%s", v.Host, v.IP))
 	}
-	#_, err := http.PostForm(target, formdata)
-	#if err != nil {
-	#	fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
-	#}
+	//_, err := http.PostForm(target, formdata)
+	//if err != nil {
+	//	fmt.Println(fmt.Sprintf("ERROR posting hostname: %s", err))
+	//}
 }
 
 // Report block as finished and break
