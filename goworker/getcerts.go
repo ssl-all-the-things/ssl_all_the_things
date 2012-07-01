@@ -19,7 +19,7 @@ import (
 var nworkers = flag.Int("n", 256, "The number of concurrent connections.")
 var sem = make(chan int, 65)
 var serverinfo = "ssl.iskansloos.nl"
-var total, wqid int
+var total, wqid, errors int
 
 type WorkTodo struct {
 	Host   string
@@ -154,6 +154,7 @@ func main() {
 	// Make the worker chanels
 	in := make(chan WorkTodo, 256*256)
 	done := make(chan PTRrecord, 256*256)
+	errors = 0
 
 	//	Start the workers
 	for i := 0; i < *nworkers; i++ {
@@ -169,6 +170,10 @@ func main() {
 			total, wqid = fill_workqueue(in, serverinfo)
 			fmt.Println("Bucketid", wqid, "contains", total, "ip's")
 
+			if total == 0 && wqid == 0 {
+				errors++
+			}
+
 			if update {
 				update_block_done(serverinfo, wqid)
 			}
@@ -178,6 +183,11 @@ func main() {
 
 		if len(done) > *nworkers {
 			handle_hostname(done)
+		}
+
+		if errors > 5 {
+			// weird state, exit the program
+			break
 		}
 
 		percent := float64(len(in))/float64(cap(in))*100.00
