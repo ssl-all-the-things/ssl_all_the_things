@@ -6,6 +6,10 @@ import datetime
 from django.views.decorators.csrf import csrf_exempt
 import logging
 import json
+from pymongo import MongoClient
+
+connection = MongoClient()
+db = connection.ssl_all_the_things
 
 logger = logging.getLogger(__name__)
 
@@ -30,11 +34,15 @@ def post(request):
     ip, port = request.POST["endpoint"].split(":")
     endpoint, created = EndPoint.objects.get_or_create(ip=ip, port=port)
     endpoint.save()
-    cert = Certificate(
-                        endpoint=endpoint,
-                        subject_commonname=request.POST["commonname"],
-                        pem=request.POST["pem"])
-    cert.save()
+		collection = db.certs
+
+    cert = { "endpoint": request.POST["endpoint"],
+             "subject_commonname": request.POST["commonname"],
+             "pem": request.POST["pem"],
+						 "date": datetime.datetime.utcnow() }
+
+		cert_id = collection.insert(cert)
+
     return HttpResponse("OK")
 
 @csrf_exempt
