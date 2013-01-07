@@ -310,9 +310,6 @@ class Probe(object):
         print self.__real_dumpdir
 
     def execute(self):
-        if not os.path.exists(self.__real_dumpdir):
-            os.makedirs(self.__real_dumpdir)
-
         self.__process = subprocess.Popen(self.__real_cmdline, shell=True, stdout=subprocess.PIPE)
 
     def is_finished(self):
