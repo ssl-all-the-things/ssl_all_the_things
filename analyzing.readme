@@ -21,4 +21,9 @@ mysql> DESCRIBE work_certificate;
 +--------------------+--------------+------+-----+---------+----------------+
 4 rows in set (0.02 sec)
 
-mysql> SELECT * FROM work_certificate WHERE subject_commonname LIKE '%tumblr.com';
+mysql> SELECT pem FROM work_certificate WHERE subject_commonname LIKE '%tumblr.com';
+mysql> SELECT pem FROM work_certificate WHERE id = 8952481\G
+
+$ openssl x509 -text -in Desktop/tumblr.pem
+
+http://www.madboa.com/geek/openssl/#cert-exam
