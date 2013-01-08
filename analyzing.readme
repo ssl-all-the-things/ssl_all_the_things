@@ -1,0 +1,24 @@
+# unpack the tar file
+tar -zxf ssl.sql.tgz
+
+# start mysql client shell
+mysql -u root -p
+mysql> CREATE DATABASE `ssl`;
+mysql> GRANT ALL PRIVILEGES ON `ssl.*` TO `ssl`@`localhost` IDENTIFIED BY 'password';
+mysql> FLUSH PRIVILEGES;
+mysql> \u ssl
+# import the data, this will take a while
+mysql> \. ssl.sql
+
+mysql> DESCRIBE work_certificate;
++--------------------+--------------+------+-----+---------+----------------+
+| Field              | Type         | Null | Key | Default | Extra          |
++--------------------+--------------+------+-----+---------+----------------+
+| id                 | int(11)      | NO   | PRI | NULL    | auto_increment |
+| endpoint_id        | int(11)      | NO   | MUL | NULL    |                |
+| subject_commonname | varchar(256) | YES  |     | NULL    |                |
+| pem                | longtext     | NO   |     | NULL    |                |
++--------------------+--------------+------+-----+---------+----------------+
+4 rows in set (0.02 sec)
+
+mysql> SELECT * FROM work_certificate WHERE subject_commonname LIKE '%tumblr.com';
