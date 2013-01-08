@@ -3,10 +3,11 @@
 
 import MySQLdb
 import sys, os
-import M2Crypto
 import ConfigParser
+import M2Crypto
 from M2Crypto import X509, EVP, RSA, ASN1
-import multiprocessing as mp
+import multiprocessing
+from multiprocessing import Process, Pool
 
 class PostProcessing(object):
     db = None
@@ -81,40 +82,58 @@ ca_count = 0
 eec_count = 0
 
 
-
-# Fetch!
-row = cur.fetchone()
-while row:
-    if (total_count % 1000000) == 0:
-        sys.stdout.write('.')
-        sys.stdout.flush()
-
-    # load cert
+def cert_process(pem):
     try:
-        x509 = X509.load_cert_string(row[3])
-        if x509.check_ca():
-            ca_count += 1
-        else:
-            eec_count += 1
+        x509 = X509.load_cert_string(pem)
+#        if x509.check_ca():
+#            ca_count += 1
+#        else:
+#            eec_count += 1
+    except:
+        pass
+        return
+
+    return
+
+    #print x509.as_text()
+    try:
+        subjectAltName = x509.get_ext('subjectAltName').get_value()
+
+        for san in subjectAltName.split(", "):
+            print san.split(":")[0], san.split(":")[1]
     except:
         pass
 
-#    #print x509.as_text()
-#    try:
-#        subjectAltName = x509.get_ext('subjectAltName').get_value()
-#
-#        for san in subjectAltName.split(", "):
-#            print san.split(":")[0], san.split(":")[1]
-#    except:
-#        pass
+#############################################################
+if __name__ == '__main__':
+    # Fetch!
+    cpus = multiprocessing.cpu_count()
+    print "Detected %d CPUs" % cpus
+    pool = Pool(processes=cpus)              # start 4 worker processes
 
-    total_count += 1
-    try:
-        row = cur.fetchone()
-        continue
-    except:
-        pass
-        break
+    row = cur.fetchone()
+    while row:
+        if (total_count % 1000000) == 0:
+            sys.stdout.write('.')
+            sys.stdout.flush()
+
+        pem = row[3]
+        pool.apply_async(cert_process, (pem,))
+
+        total_count += 1
+        try:
+            row = cur.fetchone()
+            continue
+        except:
+            pass
+            break
+
+#        p = Process(target=cert_process, args=(pem,))
+#        p.start()
+#        p.join()
+
+
+
 
 
 print "CA : %d / %d" % (ca_count, total_count)
