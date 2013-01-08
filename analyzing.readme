@@ -3,10 +3,10 @@ tar -zxf ssl.sql.tgz
 
 # start mysql client shell
 mysql -u root -p
-mysql> CREATE DATABASE `ssl`;
-mysql> GRANT ALL PRIVILEGES ON `ssl.*` TO `ssl`@`localhost` IDENTIFIED BY 'password';
-mysql> FLUSH PRIVILEGES;
+mysql> CREATE DATABASE `sslallthethings`;
 mysql> \u ssl
+mysql> GRANT ALL ON `sslallthethings.*` TO sslallthethings@localhost IDENTIFIED BY 'vajyzuvune';
+mysql> FLUSH PRIVILEGES;
 # import the data, this will take a while
 mysql> \. ssl.sql
 
