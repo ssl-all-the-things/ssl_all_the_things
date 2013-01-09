@@ -1,0 +1,29 @@
+# unpack the tar file
+tar -zxf ssl.sql.tgz
+
+# start mysql client shell
+mysql -u root -p
+mysql> CREATE DATABASE `sslallthethings`;
+mysql> \u ssl
+mysql> GRANT ALL ON `sslallthethings.*` TO sslallthethings@localhost IDENTIFIED BY 'vajyzuvune';
+mysql> FLUSH PRIVILEGES;
+# import the data, this will take a while
+mysql> \. ssl.sql
+
+mysql> DESCRIBE work_certificate;
++--------------------+--------------+------+-----+---------+----------------+
+| Field              | Type         | Null | Key | Default | Extra          |
++--------------------+--------------+------+-----+---------+----------------+
+| id                 | int(11)      | NO   | PRI | NULL    | auto_increment |
+| endpoint_id        | int(11)      | NO   | MUL | NULL    |                |
+| subject_commonname | varchar(256) | YES  |     | NULL    |                |
+| pem                | longtext     | NO   |     | NULL    |                |
++--------------------+--------------+------+-----+---------+----------------+
+4 rows in set (0.02 sec)
+
+mysql> SELECT pem FROM work_certificate WHERE subject_commonname LIKE '%tumblr.com';
+mysql> SELECT pem FROM work_certificate WHERE id = 8952481\G
+
+$ openssl x509 -text -in Desktop/tumblr.pem
+
+http://www.madboa.com/geek/openssl/#cert-exam

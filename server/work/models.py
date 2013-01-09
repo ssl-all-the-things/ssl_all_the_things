@@ -6,7 +6,7 @@ class Task(models.Model):
     # The work tasks  consist of *.*.c.d
     c = models.IntegerField(db_index=True)
     d = models.IntegerField(db_index=True)
-    status = models.CharField(  max_length=4, 
+    status = models.CharField(  max_length=4,
                                 db_index=True,
                                 choices = (
                                     ("O", "Open"),
@@ -22,7 +22,7 @@ class EndPoint(models.Model):
     ip = models.IPAddressField()
     port = models.IntegerField()
     rev_dns = models.CharField(max_length=256, null=True, blank=True)
-    
+
     def __unicode__(self):
         return u"%s:%s" % (self.ip, self.port)
 
@@ -34,8 +34,13 @@ class Certificate(models.Model):
     def __unicode__(self):
         return self.subject_commonname
 
-    
-    
+class Hostname(models.Model):
+    ip = models.IPAddressField()
+    hostname = models.CharField(max_length=256, null=False, blank=False)
+
+    def __unicode__(self):
+        return self.hostname
+
 
 
 
