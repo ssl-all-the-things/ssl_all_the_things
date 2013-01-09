@@ -72,7 +72,9 @@ class PostProcessing(object):
             "ca BOOLEAN,"\
             "not_before DATETIME,"\
             "not_after DATETIME,"\
-            "fingerprint LONGTEXT,"\
+            "fingerprint_md5 TEXT,"\
+            "fingerprint_sha1 TEXT,"\
+            "fingerprint_sha256 TEXT,"\
             "pubkey LONGTEXT,"\
             "pubkey_length INT,"\
             "PRIMARY KEY (cert_id)"\
@@ -82,13 +84,44 @@ class PostProcessing(object):
         try:
             cur.execute(q)
         except:
-            print "Failed to add a new tables"
+            print "Failed to add a new table"
             raise
 
+    def create_meta_cert_san(self):
+        q = "CREATE TABLE meta_cert_san(" \
+            "cert_id INT NOT NULL,"\
+            "san_type VARCHAR(30),"\
+            "san_value VARCHAR(255),"\
+            "order_num INT,"\
+            "PRIMARY KEY (cert_id, san_type, san_value)"\
+            ")"
 
+        cur = self.db.cursor()
+        try:
+            cur.execute(q)
+        except:
+            print "Failed to add a new table"
+            raise
+
+    def create_meta_cert_ext(self):
+        q = "CREATE TABLE meta_cert_ext(" \
+            "cert_id INT NOT NULL,"\
+            "ext_name VARCHAR(40),"\
+            "ext_value VARCHAR(250),"\
+            "PRIMARY KEY (cert_id, ext_name, ext_value)"\
+            ")"
+
+        cur = self.db.cursor()
+        try:
+            cur.execute(q)
+        except:
+            print "Failed to add a new table"
+            raise
 
     def load_tables(self):
         has_meta_cert = False
+        has_meta_cert_san = False
+        has_meta_cert_ext = False
 
         cur = self.db.cursor()
         cur.execute("SHOW TABLES")
@@ -96,7 +129,12 @@ class PostProcessing(object):
         while row:
             if row[0] == "meta_cert":
                 has_meta_cert = True
-                break
+
+            if row[0] == "meta_cert_san":
+                has_meta_cert_san = True
+
+            if row[0] == "meta_cert_ext":
+                has_meta_cert_ext = True
 
             try:
                 row = cur.fetchone()
@@ -107,9 +145,14 @@ class PostProcessing(object):
         if not has_meta_cert:
             print "Creating \"meta_cert\"";
             self.create_meta_cert()
+        if not has_meta_cert_san:
+            print "Creating \"meta_cert_san\"";
+            self.create_meta_cert_san()
+        if not has_meta_cert_ext:
+            print "Creating \"meta_cert_ext\"";
+            self.create_meta_cert_ext()
 
     def load_configuration(self):
-        print 'load %s' % self.conffile
         try:
             if not os.path.exists(self.conffile):
                 print "Could not open the configuration file \"%s\"" % self.conffile
@@ -147,7 +190,7 @@ class PostProcessing(object):
 
 def cert_process(row):
     try:
-        foo = PostProcessing()
+        my_pp = PostProcessing()
     except:
         print "Could not connect to the database"
         return
@@ -160,74 +203,108 @@ def cert_process(row):
         pass
         return
 
-    print "-------------"
-    print x509.get_version()
-    print x509.get_serial_number()
-
-    not_before = __m2CryptoUTC2datetime(x509.get_not_before())
-    not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
-
-    q = "INSERT INTO meta_cert "\
-                   "(cert_id, version,"\
-                    "subject_dn, issuer_dn, serial_nr, ca, "\
-                    "not_before, not_after, fingerprint, "\
-                    "pubkey, pubkey_length) "\
-            "VALUES (\"%s\", %d,"\
-                    "\"%s\", \"%s\", \"%s\", %d, "\
-                    "\"%s\", \"%s\", \"%s\", "\
-                    "\"%s\", %d)" % \
-                   (cert_id, x509.get_version(), \
-                    x509.get_subject(), x509.get_issuer(), str(x509.get_serial_number()), x509.check_ca(),\
-                    not_before, not_after, x509.get_fingerprint(),\
-                    x509.get_pubkey().get_rsa().as_pem(), len(x509.get_pubkey().get_rsa())\
-                   )
-
-    print q
-    cur = foo.db.cursor()
+    #print x509.as_text()
     try:
-        cur.execute(q)
-        foo.db.commit()
+        not_before = __m2CryptoUTC2datetime(x509.get_not_before())
+        not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
+
+        q = "INSERT INTO meta_cert "\
+                       "(cert_id, version,"\
+                        "subject_dn, issuer_dn, serial_nr, ca, "\
+                        "not_before, not_after, "\
+                        "fingerprint_md5, fingerprint_sha1, fingerprint_sha256, "\
+                        "pubkey, pubkey_length) "\
+                "VALUES (\"%s\", %d,"\
+                        "\"%s\", \"%s\", \"%s\", %d, "\
+                        "\"%s\", \"%s\", "\
+                        "\"%s\", \"%s\", \"%s\", "\
+                        "\"%s\", %d)" % \
+                       (cert_id, x509.get_version(), \
+                        x509.get_subject(), x509.get_issuer(), str(x509.get_serial_number()), x509.check_ca(),\
+                        not_before, not_after,\
+                        x509.get_fingerprint('md5'), x509.get_fingerprint('sha1'), x509.get_fingerprint('sha256'),\
+                        x509.get_pubkey().get_rsa().as_pem(), len(x509.get_pubkey().get_rsa())\
+                       )
+
+#        print q
+        cur = my_pp.db.cursor()
+        try:
+            cur.execute(q)
+            my_pp.db.commit()
+        except:
+            print "Failed to add a new record"
+            pass
     except:
-        print "Failed to add a new record"
+        pass
+
+    ### Subject Alt Names
+    try:
+        subjectAltName = x509.get_ext('subjectAltName').get_value()
+
+        order_num = 0
+        for san in subjectAltName.split(", "):
+            san_type = san.split(":")[0]
+            san_value = san.split(":")[1]
+
+            q = "INSERT INTO meta_cert_san "\
+                           "(cert_id, san_type, san_value, order_num)"\
+                    "VALUES (%d,      \"%s\",   \"%s\",    %d)" % \
+                            (cert_id, san_type, san_value, order_num)
+            order_num += 1
+#            print q
+            cur = my_pp.db.cursor()
+            try:
+                cur.execute(q)
+                my_pp.db.commit()
+            except:
+                print "Failed to add a new record"
+                pass
+    except:
+        pass
+
+
+    #### Extentions
+    try:
+        count = x509.get_ext_count()
+        for i in range(0, count):
+#            print "[%s]: %s" % (x509.get_ext_at(i).get_name(), x509.get_ext_at(i).get_value())
+
+            ext_name = x509.get_ext_at(i).get_name()
+            ext_value = x509.get_ext_at(i).get_value()
+
+            q = "INSERT INTO meta_cert_ext "\
+                           "(cert_id, ext_name, ext_value)"\
+                    "VALUES (%d,      \"%s\",   \"%s\")" % \
+                            (cert_id, ext_name, ext_value)
+#            print q
+            cur = my_pp.db.cursor()
+            try:
+                cur.execute(q)
+                my_pp.db.commit()
+            except:
+                print "Failed to add a new record"
+                pass
+    except:
         pass
 
     try:
         cur.close()
-        foo.db.close()
+        my_pp.db.close()
     except:
         print "Failed to close db cursor/connection"
-
-
-
-    #### Extentions
-    count = x509.get_ext_count()
-    for i in range(0, count):
-        print "[%s]: %s" % (x509.get_ext_at(i).get_name(), x509.get_ext_at(i).get_value())
-
-    #print x509.as_text()
-    try:
-        subjectAltName = x509.get_ext('subjectAltName').get_value()
-
-        for san in subjectAltName.split(", "):
-            print san.split(":")[0], san.split(":")[1]
-    except:
         pass
+
+
 
 
 #############################################################
 if __name__ == '__main__':
-    foo = PostProcessing()
-    #cur = foo.db.cursor()
-    cur = foo.db.cursor(cursorclass=MySQLdb.cursors.SSCursor)
-    cur.execute("select * from work_certificate")
-
     total_count = 0
     ca_count = 0
     eec_count = 0
 
-
     debug = False
-    debug = True
+#    debug = True
 
     # Fetch!
     if not debug:
@@ -235,19 +312,30 @@ if __name__ == '__main__':
         print "Detected %d CPUs" % cpus
         pool = Pool(processes=cpus)              # start 4 worker processes
 
+    foo = PostProcessing()
+    cur = foo.db.cursor(cursorclass=MySQLdb.cursors.SSCursor)
+    cur.execute("select * from work_certificate")
+
     row = cur.fetchone()
     while row:
         if debug and total_count == 4:
+            cur.close()
+            print "Break"
             break
+
+        print total_count
 
         if (total_count % 1000000) == 0:
             sys.stdout.write('.')
             sys.stdout.flush()
 
-        if debug:
-            cert_process(row)
-        else:
-            pool.apply_async(cert_process, (row,))
+        try:
+            if debug:
+                cert_process(row)
+            else:
+                pool.apply_async(cert_process, (row,))
+        except:
+            pass
 
         total_count += 1
         try:
@@ -263,9 +351,7 @@ if __name__ == '__main__':
         pass
 
 
-print "CA : %d / %d" % (ca_count, total_count)
-print "EEC: %d / %d" % (eec_count, total_count)
-
+print "Total certificates processed: %d" % total_count
 
 try:
     if foo.db:
