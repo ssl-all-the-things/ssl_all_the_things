@@ -12,6 +12,7 @@ import M2Crypto
 from M2Crypto import X509, EVP, RSA, ASN1
 import multiprocessing
 from multiprocessing import Process, Pool
+import hashlib
 
 
 def __m2CryptoUTC2datetime(m2CryptoUTC):
@@ -72,12 +73,11 @@ class PostProcessing(object):
             "ca BOOLEAN,"\
             "not_before DATETIME,"\
             "not_after DATETIME,"\
-            "fingerprint_md5 TEXT,"\
-            "fingerprint_sha1 TEXT,"\
-            "fingerprint_sha256 TEXT,"\
+            "digest VARCHAR(64),"\
             "pubkey LONGTEXT,"\
             "pubkey_length INT,"\
-            "PRIMARY KEY (cert_id)"\
+            "PRIMARY KEY (cert_id), "\
+            "UNIQUE (digest)"\
             ")"
 
         cur = self.db.cursor()
@@ -91,9 +91,11 @@ class PostProcessing(object):
         q = "CREATE TABLE meta_cert_san(" \
             "cert_id INT NOT NULL,"\
             "san_type VARCHAR(30),"\
-            "san_value VARCHAR(255),"\
+            "san_value VARCHAR(512),"\
+            "digest VARCHAR(64),"\
             "order_num INT,"\
-            "PRIMARY KEY (cert_id, san_type, san_value)"\
+            "PRIMARY KEY (cert_id),"\
+            "UNIQUE (digest)"\
             ")"
 
         cur = self.db.cursor()
@@ -106,9 +108,11 @@ class PostProcessing(object):
     def create_meta_cert_ext(self):
         q = "CREATE TABLE meta_cert_ext(" \
             "cert_id INT NOT NULL,"\
-            "ext_name VARCHAR(40),"\
-            "ext_value VARCHAR(250),"\
-            "PRIMARY KEY (cert_id, ext_name, ext_value)"\
+            "ext_name VARCHAR(25),"\
+            "ext_value LONGTEXT,"\
+            "digest VARCHAR(64),"\
+            "PRIMARY KEY (cert_id),"\
+            "UNIQUE (digest)"\
             ")"
 
         cur = self.db.cursor()
@@ -187,108 +191,131 @@ class PostProcessing(object):
             raise
 
 
+def quotify(s):
+    return "\"" + s + "\""
 
-def cert_process(row):
+
+def cert_process(rows):
     try:
         my_pp = PostProcessing()
     except:
         print "Could not connect to the database"
         return
 
-    cert_id = row[0]
-    pem = row[3]
-    try:
-        x509 = X509.load_cert_string(pem)
-    except:
-        pass
-        return
-
-    #print x509.as_text()
-    try:
-        not_before = __m2CryptoUTC2datetime(x509.get_not_before())
-        not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
-
-        q = "INSERT INTO meta_cert "\
-                       "(cert_id, version,"\
-                        "subject_dn, issuer_dn, serial_nr, ca, "\
-                        "not_before, not_after, "\
-                        "fingerprint_md5, fingerprint_sha1, fingerprint_sha256, "\
-                        "pubkey, pubkey_length) "\
-                "VALUES (\"%s\", %d,"\
-                        "\"%s\", \"%s\", \"%s\", %d, "\
-                        "\"%s\", \"%s\", "\
-                        "\"%s\", \"%s\", \"%s\", "\
-                        "\"%s\", %d)" % \
-                       (cert_id, x509.get_version(), \
-                        x509.get_subject(), x509.get_issuer(), str(x509.get_serial_number()), x509.check_ca(),\
-                        not_before, not_after,\
-                        x509.get_fingerprint('md5'), x509.get_fingerprint('sha1'), x509.get_fingerprint('sha256'),\
-                        x509.get_pubkey().get_rsa().as_pem(), len(x509.get_pubkey().get_rsa())\
-                       )
-
-#        print q
-        cur = my_pp.db.cursor()
+    for row in rows:
+        cert_id = row[0]
+        pem = row[3]
         try:
-            cur.execute(q)
-            my_pp.db.commit()
+            x509 = X509.load_cert_string(pem)
         except:
-            print "Failed to add a new record"
             pass
-    except:
-        pass
+            return
 
-    ### Subject Alt Names
-    try:
-        subjectAltName = x509.get_ext('subjectAltName').get_value()
+        #print x509.as_text()
+        try:
+            not_before = __m2CryptoUTC2datetime(x509.get_not_before())
+            not_before = "NULL"
+        except:
+            not_before = "NULL"
+        try:
+            not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
+            not_after = "NULL"
+        except:
+            not_after = "NULL"
 
-        order_num = 0
-        for san in subjectAltName.split(", "):
-            san_type = san.split(":")[0]
-            san_value = san.split(":")[1]
+        try:
+            q = "INSERT INTO meta_cert "\
+                           "(cert_id, version,"\
+                            "subject_dn, issuer_dn, serial_nr, ca, "\
+                            "not_before, not_after, "\
+                            "digest, "\
+                            "pubkey, pubkey_length) "\
+                    "VALUES (%s, %d,"\
+                            "%s, %s, %s, %d,"\
+                            "%s, %s,"\
+                            "%s,"\
+                            "%s, %d)" % \
+                           (quotify(str(cert_id)), x509.get_version(), \
+                            quotify(str(x509.get_subject())), quotify(str(x509.get_issuer())), quotify(str(x509.get_serial_number())), x509.check_ca(),\
+                            not_before, not_after,\
+                            quotify(x509.get_fingerprint('sha1')),\
+                            quotify(x509.get_pubkey().get_rsa().as_pem()), len(x509.get_pubkey().get_rsa())\
+                           )
+        except:
+            print "Conversion error.."
+            pass
 
-            q = "INSERT INTO meta_cert_san "\
-                           "(cert_id, san_type, san_value, order_num)"\
-                    "VALUES (%d,      \"%s\",   \"%s\",    %d)" % \
-                            (cert_id, san_type, san_value, order_num)
-            order_num += 1
-#            print q
+        try:
+            #print q
             cur = my_pp.db.cursor()
             try:
                 cur.execute(q)
                 my_pp.db.commit()
             except:
-                print "Failed to add a new record"
+#            print "Failed to add a new record"
                 pass
-    except:
-        pass
+        except:
+            print "Conversion error.."
+            pass
+
+        ### Subject Alt Names
+        try:
+            subjectAltName = x509.get_ext('subjectAltName').get_value()
+
+            order_num = 0
+            for san in subjectAltName.split(", "):
+                san_type = san.split(":")[0]
+                san_value = san.split(":")[1]
+
+                q = "INSERT INTO meta_cert_san "\
+                               "(cert_id, san_type, san_value, order_num, digest)"\
+                        "VALUES (%d,      \"%s\",   \"%s\",    %d,        \"%s\")" % \
+                                (cert_id, san_type, san_value, order_num, digest)
+                order_num += 1
+#            print q
+                cur = my_pp.db.cursor()
+                try:
+                    cur.execute(q)
+                    my_pp.db.commit()
+                except:
+#                print "Failed to add a new record"
+                    pass
+        except:
+            pass
 
 
-    #### Extentions
-    try:
-        count = x509.get_ext_count()
-        for i in range(0, count):
+        #### Extentions
+        try:
+            count = x509.get_ext_count()
+            for i in range(0, count):
 #            print "[%s]: %s" % (x509.get_ext_at(i).get_name(), x509.get_ext_at(i).get_value())
 
-            ext_name = x509.get_ext_at(i).get_name()
-            ext_value = x509.get_ext_at(i).get_value()
+                ext_name = x509.get_ext_at(i).get_name()
+                ext_value = x509.get_ext_at(i).get_value()
 
-            q = "INSERT INTO meta_cert_ext "\
-                           "(cert_id, ext_name, ext_value)"\
-                    "VALUES (%d,      \"%s\",   \"%s\")" % \
-                            (cert_id, ext_name, ext_value)
+                digest = hashlib.sha224("Nobody inspects the spammish repetition").hexdigest()
+                m = hashlib.sha256()
+                m.update(ext_name)
+                m.update(ext_value)
+                digest = m.digest().hexdigest()
+                print digest
+
+                q = "INSERT INTO meta_cert_ext "\
+                               "(cert_id, ext_name, ext_value, digest)"\
+                        "VALUES (%d,      \"%s\",   \"%s\",    \"%s\")" % \
+                                (cert_id, ext_name, ext_value, digest)
 #            print q
-            cur = my_pp.db.cursor()
-            try:
-                cur.execute(q)
-                my_pp.db.commit()
-            except:
-                print "Failed to add a new record"
-                pass
-    except:
-        pass
+                cur = my_pp.db.cursor()
+                try:
+                    cur.execute(q)
+                    my_pp.db.commit()
+                except:
+#                print "Failed to add a new record"
+                    pass
+        except:
+            pass
 
     try:
-        cur.close()
         my_pp.db.close()
     except:
         print "Failed to close db cursor/connection"
@@ -304,46 +331,44 @@ if __name__ == '__main__':
     eec_count = 0
 
     debug = False
-#    debug = True
+    debug = True
+
 
     # Fetch!
-    if not debug:
+    if debug:
+        print "Debug mode"
+    else:
+        print "Production mode"
         cpus = multiprocessing.cpu_count()
         print "Detected %d CPUs" % cpus
         pool = Pool(processes=cpus)              # start 4 worker processes
 
-    foo = PostProcessing()
-    cur = foo.db.cursor(cursorclass=MySQLdb.cursors.SSCursor)
-    cur.execute("select * from work_certificate")
+    postproc = PostProcessing()
+    cur = postproc.db.cursor(cursorclass=MySQLdb.cursors.SSCursor)
 
-    row = cur.fetchone()
-    while row:
-        if debug and total_count == 4:
-            cur.close()
-            print "Break"
-            break
+    if debug:
+        #cur.execute("SELECT * FROM work_certificate LIMIT 1000000")
+        cur.execute("SELECT * FROM work_certificate LIMIT 4")
+    else:
+        cur.execute("SELECT * FROM work_certificate")
 
-        print total_count
-
-        if (total_count % 1000000) == 0:
-            sys.stdout.write('.')
-            sys.stdout.flush()
-
+    arraysize = 100
+    while True:
         try:
-            if debug:
-                cert_process(row)
-            else:
-                pool.apply_async(cert_process, (row,))
-        except:
-            pass
-
-        total_count += 1
-        try:
-            row = cur.fetchone()
-            continue
+            rows = cur.fetchmany(arraysize)
+            if not rows:
+                break
         except:
             pass
             break
+
+        if debug:
+            cert_process(rows)
+        else:
+            pool.apply_async(cert_process, (rows,))
+
+        total_count += arraysize
+
     try:
         cur.close()
     except:
@@ -354,8 +379,8 @@ if __name__ == '__main__':
 print "Total certificates processed: %d" % total_count
 
 try:
-    if foo.db:
-        foo.db.close()
+    if postproc.db:
+        postproc.db.close()
 except:
     print "Failed to close the database"
     pass
