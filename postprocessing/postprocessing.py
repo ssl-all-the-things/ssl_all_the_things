@@ -76,8 +76,8 @@ class PostProcessing(object):
             "digest VARCHAR(64),"\
             "pubkey LONGTEXT,"\
             "pubkey_length INT,"\
-            "PRIMARY KEY (cert_id), "\
-            "UNIQUE (digest)"\
+            "replica INT,"\
+            "PRIMARY KEY (cert_id)"\
             ")"
 
         cur = self.db.cursor()
@@ -94,8 +94,7 @@ class PostProcessing(object):
             "san_value VARCHAR(512),"\
             "digest VARCHAR(64),"\
             "order_num INT,"\
-            "PRIMARY KEY (cert_id),"\
-            "UNIQUE (digest)"\
+            "PRIMARY KEY (cert_id, digest)"\
             ")"
 
         cur = self.db.cursor()
@@ -111,8 +110,8 @@ class PostProcessing(object):
             "ext_name VARCHAR(25),"\
             "ext_value LONGTEXT,"\
             "digest VARCHAR(64),"\
-            "PRIMARY KEY (cert_id),"\
-            "UNIQUE (digest)"\
+            "order_num INT,"\
+            "PRIMARY KEY (cert_id, digest)"\
             ")"
 
         cur = self.db.cursor()
@@ -195,6 +194,123 @@ def quotify(s):
     return "\"" + s + "\""
 
 
+
+def insert_meta_cert(pp, x509, cert_id):
+    try:
+        not_before = __m2CryptoUTC2datetime(x509.get_not_before())
+        not_before = quotify(not_before)
+    except:
+        not_before = "NULL"
+
+    try:
+        not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
+        not_after  = quotify(not_after)
+    except:
+        not_after = "NULL"
+
+    try:
+        q = "INSERT INTO meta_cert "\
+                       "(cert_id, version,"\
+                        "subject_dn, issuer_dn, serial_nr, ca, "\
+                        "not_before, not_after, "\
+                        "digest, "\
+                        "pubkey, pubkey_length, replica) "\
+                "VALUES (%d, %d,"\
+                        "%s, %s, %s, %d,"\
+                        "%s, %s,"\
+                        "%s,"\
+                        "%s, %d, NULL)" % \
+                       (cert_id, x509.get_version(), \
+                        quotify(str(x509.get_subject())), quotify(str(x509.get_issuer())), quotify(str(x509.get_serial_number())), x509.check_ca(),\
+                        not_before, not_after,\
+                        quotify(x509.get_fingerprint('sha1')),\
+                        quotify(x509.get_pubkey().get_rsa().as_pem()), len(x509.get_pubkey().get_rsa())\
+                       )
+    except:
+        print "Error (insert_meta_cert): Conversion error in INSERT statement."
+        return
+
+    try:
+        cur = pp.db.cursor()
+        cur.execute(q)
+        pp.db.commit()
+    except MySQLdb.Error, e:
+        errnum = e.args[0]
+        # Skip/ignore the duplicate error, error
+        if errnum == 1062:
+            pass
+        else:
+            print "Error (insert_meta_cert): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+#        print q
+            pass
+
+def insert_meta_cert_san(pp, x509, cert_id):
+    ### Subject Alt Names
+    try:
+        subjectAltName = x509.get_ext('subjectAltName').get_value()
+    except:
+        pass
+        return
+
+    order_num = 0
+    for san in subjectAltName.split(", "):
+        san_type = san.split(":")[0]
+        san_value = san.split(":")[1]
+
+        m = hashlib.sha256()
+        m.update(san_type)
+        m.update(san_value)
+        digest = m.hexdigest()
+
+        q = "INSERT INTO meta_cert_san "\
+                       "(cert_id, san_type, san_value, order_num, digest)"\
+                "VALUES (%d,      \"%s\",   \"%s\",    %d,        \"%s\")" % \
+                        (cert_id, san_type, san_value, order_num, digest)
+        order_num += 1
+        cur = pp.db.cursor()
+        try:
+            cur.execute(q)
+            pp.db.commit()
+        except MySQLdb.Error, e:
+            errnum = e.args[0]
+            # Skip/ignore the duplicate error, error
+            if errnum == 1062:
+                pass
+            else:
+                print "Error (insert_meta_cert_san): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+                pass
+
+
+def insert_meta_cert_ext(pp, x509, cert_id):
+    count = x509.get_ext_count()
+
+    for i in range(0, count):
+        ext_name = x509.get_ext_at(i).get_name()
+        ext_value = x509.get_ext_at(i).get_value()
+
+        m = hashlib.sha256()
+        m.update(ext_name)
+        m.update(ext_value)
+        digest = m.hexdigest()
+
+        q = "INSERT INTO meta_cert_ext "\
+                       "(cert_id, ext_name, ext_value, digest, order_num) "\
+                "VALUES (%d,      \"%s\",   \"%s\",    \"%s\", %d)" % \
+                        (cert_id, ext_name, ext_value, digest, i)
+        cur = pp.db.cursor()
+        try:
+            cur.execute(q)
+            pp.db.commit()
+        except MySQLdb.Error, e:
+            errnum = e.args[0]
+            # Skip/ignore the duplicate error, error
+            if errnum == 1062:
+                pass
+            else:
+                print "Error (insert_meta_cert_ext): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+                pass
+
+
 def cert_process(rows):
     try:
         my_pp = PostProcessing()
@@ -212,106 +328,11 @@ def cert_process(rows):
             return
 
         #print x509.as_text()
-        try:
-            not_before = __m2CryptoUTC2datetime(x509.get_not_before())
-            not_before = "NULL"
-        except:
-            not_before = "NULL"
-        try:
-            not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
-            not_after = "NULL"
-        except:
-            not_after = "NULL"
 
         try:
-            q = "INSERT INTO meta_cert "\
-                           "(cert_id, version,"\
-                            "subject_dn, issuer_dn, serial_nr, ca, "\
-                            "not_before, not_after, "\
-                            "digest, "\
-                            "pubkey, pubkey_length) "\
-                    "VALUES (%s, %d,"\
-                            "%s, %s, %s, %d,"\
-                            "%s, %s,"\
-                            "%s,"\
-                            "%s, %d)" % \
-                           (quotify(str(cert_id)), x509.get_version(), \
-                            quotify(str(x509.get_subject())), quotify(str(x509.get_issuer())), quotify(str(x509.get_serial_number())), x509.check_ca(),\
-                            not_before, not_after,\
-                            quotify(x509.get_fingerprint('sha1')),\
-                            quotify(x509.get_pubkey().get_rsa().as_pem()), len(x509.get_pubkey().get_rsa())\
-                           )
-        except:
-            print "Conversion error.."
-            pass
-
-        try:
-            #print q
-            cur = my_pp.db.cursor()
-            try:
-                cur.execute(q)
-                my_pp.db.commit()
-            except:
-#            print "Failed to add a new record"
-                pass
-        except:
-            print "Conversion error.."
-            pass
-
-        ### Subject Alt Names
-        try:
-            subjectAltName = x509.get_ext('subjectAltName').get_value()
-
-            order_num = 0
-            for san in subjectAltName.split(", "):
-                san_type = san.split(":")[0]
-                san_value = san.split(":")[1]
-
-                q = "INSERT INTO meta_cert_san "\
-                               "(cert_id, san_type, san_value, order_num, digest)"\
-                        "VALUES (%d,      \"%s\",   \"%s\",    %d,        \"%s\")" % \
-                                (cert_id, san_type, san_value, order_num, digest)
-                order_num += 1
-#            print q
-                cur = my_pp.db.cursor()
-                try:
-                    cur.execute(q)
-                    my_pp.db.commit()
-                except:
-#                print "Failed to add a new record"
-                    pass
-        except:
-            pass
-
-
-        #### Extentions
-        try:
-            count = x509.get_ext_count()
-            for i in range(0, count):
-#            print "[%s]: %s" % (x509.get_ext_at(i).get_name(), x509.get_ext_at(i).get_value())
-
-                ext_name = x509.get_ext_at(i).get_name()
-                ext_value = x509.get_ext_at(i).get_value()
-
-                digest = hashlib.sha224("Nobody inspects the spammish repetition").hexdigest()
-                m = hashlib.sha256()
-                m.update(ext_name)
-                m.update(ext_value)
-                digest = m.digest().hexdigest()
-                print digest
-
-                q = "INSERT INTO meta_cert_ext "\
-                               "(cert_id, ext_name, ext_value, digest)"\
-                        "VALUES (%d,      \"%s\",   \"%s\",    \"%s\")" % \
-                                (cert_id, ext_name, ext_value, digest)
-#            print q
-                cur = my_pp.db.cursor()
-                try:
-                    cur.execute(q)
-                    my_pp.db.commit()
-                except:
-#                print "Failed to add a new record"
-                    pass
+            insert_meta_cert(my_pp, x509, int(cert_id))
+            insert_meta_cert_san(my_pp, x509, int(cert_id))
+            insert_meta_cert_ext(my_pp, x509, int(cert_id))
         except:
             pass
 
@@ -348,9 +369,9 @@ if __name__ == '__main__':
 
     if debug:
         #cur.execute("SELECT * FROM work_certificate LIMIT 1000000")
-        cur.execute("SELECT * FROM work_certificate LIMIT 4")
+        cur.execute("SELECT * FROM work_certificate LIMIT 100")
     else:
-        cur.execute("SELECT * FROM work_certificate")
+        cur.execute("SELECT * FROM work_certificate LIMIT 200")
 
     arraysize = 100
     while True:
