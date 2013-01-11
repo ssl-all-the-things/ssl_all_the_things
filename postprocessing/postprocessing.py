@@ -198,13 +198,11 @@ def quotify(s):
 def insert_meta_cert(pp, x509, cert_id):
     try:
         not_before = __m2CryptoUTC2datetime(x509.get_not_before())
-        not_before = quotify(not_before)
     except:
         not_before = "NULL"
 
     try:
         not_after  = __m2CryptoUTC2datetime(x509.get_not_after())
-        not_after  = quotify(not_after)
     except:
         not_after = "NULL"
 
@@ -221,10 +219,10 @@ def insert_meta_cert(pp, x509, cert_id):
                         "%s,"\
                         "%s, %d, NULL)" % \
                        (cert_id, x509.get_version(), \
-                        quotify(str(x509.get_subject())), quotify(str(x509.get_issuer())), quotify(str(x509.get_serial_number())), x509.check_ca(),\
-                        not_before, not_after,\
+                        quotify(MySQLdb.escape_string(str(x509.get_subject()))), quotify(MySQLdb.escape_string(str(x509.get_issuer()))), quotify(MySQLdb.escape_string(str(x509.get_serial_number()))), x509.check_ca(),\
+                        quotify(str(not_before)), quotify(str(not_after)),\
                         quotify(x509.get_fingerprint('sha1')),\
-                        quotify(x509.get_pubkey().get_rsa().as_pem()), len(x509.get_pubkey().get_rsa())\
+                        quotify(MySQLdb.escape_string(x509.get_pubkey().get_rsa().as_pem())), len(x509.get_pubkey().get_rsa())\
                        )
     except:
         print "Error (insert_meta_cert): Conversion error in INSERT statement."
@@ -265,7 +263,9 @@ def insert_meta_cert_san(pp, x509, cert_id):
         q = "INSERT INTO meta_cert_san "\
                        "(cert_id, san_type, san_value, order_num, digest)"\
                 "VALUES (%d,      \"%s\",   \"%s\",    %d,        \"%s\")" % \
-                        (cert_id, san_type, san_value, order_num, digest)
+                        (cert_id, MySQLdb.escape_string(san_type),
+                                            MySQLdb.escape_string(san_value),
+                                                       order_num, digest)
         order_num += 1
         cur = pp.db.cursor()
         try:
@@ -296,7 +296,8 @@ def insert_meta_cert_ext(pp, x509, cert_id):
         q = "INSERT INTO meta_cert_ext "\
                        "(cert_id, ext_name, ext_value, digest, order_num) "\
                 "VALUES (%d,      \"%s\",   \"%s\",    \"%s\", %d)" % \
-                        (cert_id, ext_name, ext_value, digest, i)
+                        (cert_id, MySQLdb.escape_string(ext_name),
+                                            MySQLdb.escape_string(ext_value), digest, i)
         cur = pp.db.cursor()
         try:
             cur.execute(q)
@@ -334,7 +335,7 @@ def cert_process(rows):
             insert_meta_cert_san(my_pp, x509, int(cert_id))
             insert_meta_cert_ext(my_pp, x509, int(cert_id))
         except:
-            print "Something happened"
+            print "Something happened with cert_id %d" % int(cert_id)
             pass
 
     try:
