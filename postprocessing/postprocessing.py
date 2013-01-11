@@ -305,10 +305,10 @@ def insert_meta_cert_ext(pp, x509, cert_id):
             errnum = e.args[0]
             # Skip/ignore the duplicate error, error
             if errnum == 1062:
-                pass
+                continue
             else:
                 print "Error (insert_meta_cert_ext): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
-                pass
+                continue
 
 
 def cert_process(rows):
@@ -334,12 +334,13 @@ def cert_process(rows):
             insert_meta_cert_san(my_pp, x509, int(cert_id))
             insert_meta_cert_ext(my_pp, x509, int(cert_id))
         except:
+            print "Something happened"
             pass
 
     try:
         my_pp.db.close()
     except:
-        print "Failed to close db cursor/connection"
+        print "Failed to close db connection"
         pass
 
 
@@ -351,6 +352,7 @@ if __name__ == '__main__':
     ca_count = 0
     eec_count = 0
 
+    arraysize = 100
     debug = False
     debug = True
 
@@ -369,17 +371,18 @@ if __name__ == '__main__':
 
     if debug:
         #cur.execute("SELECT * FROM work_certificate LIMIT 1000000")
-        cur.execute("SELECT * FROM work_certificate LIMIT 100")
+        #cur.execute("SELECT * FROM work_certificate LIMIT 200")
+        cur.execute("SELECT * FROM work_certificate")
     else:
-        cur.execute("SELECT * FROM work_certificate LIMIT 200")
+        cur.execute("SELECT * FROM work_certificate")
 
-    arraysize = 100
     while True:
         try:
             rows = cur.fetchmany(arraysize)
             if not rows:
                 break
         except:
+            print "Couldn't fetch more records. I'm at %d" % total_count
             pass
             break
 
