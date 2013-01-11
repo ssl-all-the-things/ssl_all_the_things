@@ -69,7 +69,7 @@ class PostProcessing(object):
             "version INT,"\
             "subject_dn LONGTEXT,"\
             "issuer_dn LONGTEXT,"\
-            "serial_nr VARCHAR(100),"\
+            "serial_nr VARCHAR(128),"\
             "ca BOOLEAN,"\
             "not_before DATETIME,"\
             "not_after DATETIME,"\
@@ -90,7 +90,7 @@ class PostProcessing(object):
     def create_meta_cert_san(self):
         q = "CREATE TABLE meta_cert_san(" \
             "cert_id INT NOT NULL,"\
-            "san_type VARCHAR(30),"\
+            "san_type VARCHAR(40),"\
             "san_value VARCHAR(512),"\
             "digest VARCHAR(64),"\
             "order_num INT,"\
@@ -107,8 +107,9 @@ class PostProcessing(object):
     def create_meta_cert_ext(self):
         q = "CREATE TABLE meta_cert_ext(" \
             "cert_id INT NOT NULL,"\
-            "ext_name VARCHAR(25),"\
+            "ext_name VARCHAR(255),"\
             "ext_value LONGTEXT,"\
+            "critical INT,"\
             "digest VARCHAR(64),"\
             "order_num INT,"\
             "PRIMARY KEY (cert_id, digest)"\
@@ -237,20 +238,33 @@ def insert_meta_cert(pp, x509, cert_id):
         # Skip/ignore the duplicate error, error
         if errnum != 1062:
             print "Error (insert_meta_cert): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+            print "...Query: %s" % q
         pass
 
 def insert_meta_cert_san(pp, x509, cert_id):
     ### Subject Alt Names
     try:
-        sans = x509.get_ext('subjectAltName')
-        if not sans:
+        count = x509.get_ext_count()
+    except:
+        print "Couldn't get the count"
+        pass
+        return
+
+    subjectAltName = None
+
+    for i in range(0, count):
+        try:
+            ext_name = x509.get_ext_at(i).get_name()
+            if ext_name == "subjectAltName":
+                sans = x509.get_ext_at(i)
+                subjectAltName = sans.get_value()
+                break
+        except:
+            print "Couldn't get the subjectAltName from the sans"
+            pass
             return
 
-        subjectAltName = sans.get_value()
-        if not subjectAltName or len(subjectAltName) == 0:
-            return
-    except:
-        pass
+    if subjectAltName == None:
         return
 
     try:
@@ -296,6 +310,7 @@ def insert_meta_cert_san(pp, x509, cert_id):
                 # Skip/ignore the duplicate error, error
                 if errnum != 1062:
                     print "Error (insert_meta_cert_san): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+                    print "...Query: %s" % q
                 pass
     except:
         print "Error in insert_meta_cert_san(): General catch. SANs are %s" % subjectAltName
@@ -305,7 +320,6 @@ def insert_meta_cert_san(pp, x509, cert_id):
 def insert_meta_cert_ext(pp, x509, cert_id):
     try:
         count = x509.get_ext_count()
-        raise
     except:
         pass
         return
@@ -314,6 +328,8 @@ def insert_meta_cert_ext(pp, x509, cert_id):
         try:
             ext_name = x509.get_ext_at(i).get_name()
             ext_value = x509.get_ext_at(i).get_value()
+            critical = 0
+            critical = x509.get_ext_at(i).get_critical()
         except:
             print "Error in insert_meta_cert_ext(): could not get extention at %d" % i
             pass
@@ -321,21 +337,38 @@ def insert_meta_cert_ext(pp, x509, cert_id):
 
         try:
             m = hashlib.sha256()
-            m.update(ext_name)
-            m.update(ext_value)
+            if ext_name:
+                m.update(ext_name)
+            if ext_value:
+                m.update(ext_value)
             digest = m.hexdigest()
         except:
             print "Error in insert_meta_cert_ext(): could not create digest at %d" %i
+            print "... ext_name : %s" % ext_name
+            print "... ext_value: %s" % ext_value
             pass
             continue
 
-        q = "INSERT INTO meta_cert_ext "\
-                       "(cert_id, ext_name, ext_value, digest, order_num) "\
-                "VALUES (%d,      \"%s\",   \"%s\",    \"%s\", %d)" % \
-                        (cert_id, MySQLdb.escape_string(ext_name),
-                                            MySQLdb.escape_string(ext_value), digest, i)
+        try:
+            if not ext_name:
+                ext_name = "NULL"
+            else:
+                ext_name = quotify(MySQLdb.escape_string(ext_name))
+            if not ext_value:
+                ext_value = "NULL"
+            else:
+                ext_value = quotify(MySQLdb.escape_string(ext_value))
+
+            q = "INSERT INTO meta_cert_ext "\
+                           "(cert_id, ext_name, ext_value, critical, digest, order_num) "\
+                    "VALUES (%d,      %s,       %s,    %d,           %s,     %d)" % \
+                            (cert_id, ext_name, ext_value, critical, quotify(digest), i)
+        except:
+            print "Error in insert_meta_cert_ext(): Unable to make a query string"
+            pass
+            continue
+
         cur = pp.db.cursor()
-        print q
         try:
             cur.execute(q)
             pp.db.commit()
@@ -344,6 +377,7 @@ def insert_meta_cert_ext(pp, x509, cert_id):
             # Skip/ignore the duplicate error, error
             if errnum != 1062:
                 print "Error (insert_meta_cert_ext): Unable to execute or commit(): %d: %s" % (e.args[0], e.args[1])
+                print "...Query: %s" % q
             pass
 
 
@@ -367,6 +401,7 @@ def cert_process(rows):
         try:
             insert_meta_cert(my_pp, x509, int(cert_id))
             try:
+                #print "Starting %d" % int(cert_id)
                 insert_meta_cert_san(my_pp, x509, int(cert_id))
             except:
                 print "Exception in insert_meta_cert_san() for cert_id %d" % int(cert_id)
